@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Check, ChevronDown, ChevronUp, Swords, Trophy, X, Zap } from "lucide-react";
-import type { BattleResult, GameSnapshot } from "@/game/types";
+import type { BattleEvent, BattleResult, GameSnapshot } from "@/game/types";
 import { formatNumber } from "./game-primitives";
 import { EnemyPortrait } from "./enemy-portrait";
 export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot: GameSnapshot }) {
@@ -47,51 +47,63 @@ export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot
           ))}
         </div>
       )}
-      <div className="combat-log" aria-label="Log de combate">
-        {events.map((event) => (
-          <div className={`log-event log-${event.type}`} key={event.seq}>
-            <span className="log-round">{String(event.round).padStart(2, "0")}</span>
-            {event.type === "start" ? (
-              <span>A batalha começou.</span>
-            ) : event.type === "attack" ? (
-              <span>
-                <strong>{names[event.actor]}</strong> usou {event.techniqueName}.
-              </span>
-            ) : event.type === "damage" ? (
-              <span>
-                {names[event.target]} recebeu <strong>{event.amount} de dano</strong>. HP restante:{" "}
-                {event.remainingHp}.
-              </span>
-            ) : event.type === "skill" ? (
-              <span>
-                {names[event.actor]} concentrou Ki. −{event.kiCost} Ki.
-              </span>
-            ) : event.type === "effect" ? (
-              <span>
-                {names[event.actor]}: {event.description}.
-              </span>
-            ) : event.type === "phase" ? (
-              <span>
-                <strong>Nova fase:</strong> {event.name}.
-              </span>
-            ) : event.type === "defeat" ? (
-              <span>
-                <X size={12} /> {names[event.actor]} foi derrotado.
-              </span>
-            ) : event.type === "reward" ? (
-              <span>
-                <Check size={12} /> Recompensas adicionadas ao personagem.
-              </span>
-            ) : (
-              <span>Combate encerrado.</span>
-            )}
-          </div>
-        ))}
-      </div>
+      <CombatEventLog events={events} names={names} />
       <button className="log-expand" onClick={() => setExpanded((v) => !v)}>
         {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}{" "}
         {expanded ? "Recolher log" : `Ver batalha completa (${battle.events.length} eventos)`}
       </button>
     </section>
+  );
+}
+
+export function CombatEventLog({
+  events,
+  names,
+}: {
+  events: BattleEvent[];
+  names: { player: string; enemy: string };
+}) {
+  return (
+    <div className="combat-log" aria-label="Log de combate">
+      {events.map((event) => (
+        <div className={`log-event log-${event.type}`} key={event.seq}>
+          <span className="log-round">{String(event.round).padStart(2, "0")}</span>
+          {event.type === "start" ? (
+            <span>A batalha começou.</span>
+          ) : event.type === "attack" ? (
+            <span>
+              <strong>{names[event.actor]}</strong> usou {event.techniqueName}.
+            </span>
+          ) : event.type === "damage" ? (
+            <span>
+              {names[event.target]} recebeu <strong>{event.amount} de dano</strong>. HP restante:{" "}
+              {event.remainingHp}.
+            </span>
+          ) : event.type === "skill" ? (
+            <span>
+              {names[event.actor]} concentrou Ki. −{event.kiCost} Ki.
+            </span>
+          ) : event.type === "effect" ? (
+            <span>
+              {names[event.actor]}: {event.description}.
+            </span>
+          ) : event.type === "phase" ? (
+            <span>
+              <strong>Nova fase:</strong> {event.name}.
+            </span>
+          ) : event.type === "defeat" ? (
+            <span>
+              <X size={12} /> {names[event.actor]} foi derrotado.
+            </span>
+          ) : event.type === "reward" ? (
+            <span>
+              <Check size={12} /> Recompensas adicionadas ao personagem.
+            </span>
+          ) : (
+            <span>Combate encerrado.</span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

@@ -26,7 +26,7 @@ try {
     await client.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
     await client.query(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${role}`);
     await client.query(
-      `GRANT INSERT, UPDATE, DELETE ON auth_user, auth_session, auth_account, auth_verification, rate_limit, characters, inventory, character_techniques, character_transformations, activities, battles, history, action_receipts TO ${role}`,
+      `GRANT INSERT, UPDATE, DELETE ON auth_user, auth_session, auth_account, auth_verification, rate_limit, characters, inventory, character_techniques, character_transformations, activities, battles, active_battles, history, action_receipts TO ${role}`,
     );
     await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${role}`);
     await client.query(

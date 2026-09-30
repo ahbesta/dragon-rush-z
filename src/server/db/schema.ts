@@ -16,6 +16,8 @@ import {
 import type {
   Attributes,
   BattleResult,
+  CombatMode,
+  CombatState,
   BossPhase,
   ItemEffects,
   Requirements,
@@ -254,17 +256,29 @@ export const characters = pgTable(
       .$type<string[]>()
       .notNull()
       .default(["chute", "soco"]),
+    combatMode: text("combat_mode").$type<CombatMode>().notNull().default("automatic"),
     nextBattleAt: time("next_battle_at"),
     createdAt: time("created_at").notNull().defaultNow(),
     updatedAt: time("updated_at").notNull().defaultNow(),
   },
   (t) => [
+    check("character_combat_mode", sql`${t.combatMode} IN ('automatic', 'manual')`),
     check(
       "character_values",
       sql`${t.level} >= 1 AND ${t.xp} >= 0 AND ${t.zeni} >= 0 AND ${t.hp} >= 0 AND ${t.ki} >= 0`,
     ),
   ],
 );
+export const activeBattles = pgTable("active_battles", {
+  id: uuid("id").primaryKey(),
+  characterId: uuid("character_id")
+    .notNull()
+    .references(() => characters.id, { onDelete: "cascade" })
+    .unique(),
+  state: jsonb("state").$type<CombatState>().notNull(),
+  createdAt: time("created_at").notNull().defaultNow(),
+  updatedAt: time("updated_at").notNull().defaultNow(),
+});
 export const inventory = pgTable(
   "inventory",
   {

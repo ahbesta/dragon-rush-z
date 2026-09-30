@@ -9,6 +9,65 @@ let database: Database;
 let owner: string;
 const fixtureOwners: string[] = [];
 describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neon real", () => {
+  it("combate manual concorrente resolve uma rodada sob conexões reais", async () => {
+    const run = (action: object) =>
+      executeAction(
+        database.db,
+        owner,
+        { ...action, idempotencyKey: randomUUID() },
+        { random: () => 0 },
+      );
+    await run({ action: "combat.mode", mode: "manual" });
+    await run({ action: "battle", areaId: "floresta", enemyId: "bandido" });
+    const before = (await readSnapshot(database.db, owner))!;
+    const turn = {
+      action: "battle.turn",
+      battleId: before.activeBattle!.id,
+      round: 1,
+      techniqueId: "chute",
+    };
+    const results = await Promise.allSettled([0, 1, 2, 3].map(() => run(turn)));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect((await readSnapshot(database.db, owner))!.activeBattle?.round).toBe(2);
+    expect((await readSnapshot(database.db, owner))!.character.xp).toBe(0);
+  });
+  it("conclusão manual e automático simultâneos concedem uma recompensa", async () => {
+    const run = (action: object) =>
+      executeAction(
+        database.db,
+        owner,
+        { ...action, idempotencyKey: randomUUID() },
+        { random: () => 0 },
+      );
+    await run({ action: "combat.mode", mode: "manual" });
+    await run({ action: "battle", areaId: "floresta", enemyId: "bandido" });
+    const before = (await readSnapshot(database.db, owner))!;
+    for (const [round, techniqueId] of [
+      [1, "chute"],
+      [2, "soco"],
+      [3, "chute"],
+    ] as const)
+      await run({ action: "battle.turn", battleId: before.activeBattle!.id, round, techniqueId });
+    await Promise.allSettled([
+      run({ action: "combat.mode", mode: "automatic" }),
+      run({
+        action: "battle.turn",
+        battleId: before.activeBattle!.id,
+        round: 4,
+        techniqueId: "soco",
+      }),
+    ]);
+    const after = (await readSnapshot(database.db, owner))!;
+    expect(after.character).toMatchObject({ xp: 40, zeni: 70 });
+    expect(after.activeBattle).toBeNull();
+    expect(after.inventory.find((i) => i.itemId === "bastao")?.quantity).toBe(1);
+    expect(
+      await database.db
+        .select()
+        .from(s.battles)
+        .where(eq(s.battles.characterId, after.character.id)),
+    ).toHaveLength(1);
+  });
   beforeAll(() => {
     database = createDatabase(process.env.TEST_DATABASE_URL!);
   });

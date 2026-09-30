@@ -103,6 +103,51 @@ export type Catalog = {
   policies: ActionPolicy[];
 };
 export type DerivedStats = Attributes & { maxHp: number; maxKi: number; powerLevel: number };
+export type CombatMode = "automatic" | "manual";
+export type CombatFighter = {
+  name: string;
+  hp: number;
+  ki: number;
+  stats: DerivedStats;
+  techniques: TechniqueDefinition[];
+  turns: number;
+  nextUse: Record<string, number>;
+  buffs: { attribute: keyof Attributes; amount: number; expires: number }[];
+};
+// Estado privado e serializável do motor; nunca aceito como entrada do cliente.
+export type CombatState = {
+  version: 1;
+  id: string;
+  round: number;
+  player: CombatFighter;
+  enemy: CombatFighter;
+  definition: EnemyDefinition;
+  fallback: TechniqueDefinition;
+  drops: DropDefinition[];
+  phases: number[];
+  events: BattleEvent[];
+  result: BattleResult | null;
+};
+export type ActiveBattle = {
+  id: string;
+  enemyId: string;
+  round: number;
+  playerHp: number;
+  playerKi: number;
+  enemyHp: number;
+  enemyKi: number;
+  enemyMaxHp: number;
+  enemyMaxKi: number;
+  techniques: {
+    id: string;
+    name: string;
+    kind: TechniqueDefinition["kind"];
+    kiCost: number;
+    cooldownRemaining: number;
+    available: boolean;
+  }[];
+  events: BattleEvent[];
+};
 export type CharacterState = {
   id: string;
   userId: string;
@@ -117,6 +162,7 @@ export type CharacterState = {
   flags: string[];
   equipment: Partial<Record<Slot, string>>;
   selectedTechniques: string[];
+  combatMode: CombatMode;
   nextBattleAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -186,4 +232,5 @@ export type GameSnapshot = {
   activity: { id: string; kind: "training" | "rest"; finishesAt: string } | null;
   history: HistoryEntry[];
   latestBattle: BattleResult | null;
+  activeBattle: ActiveBattle | null;
 };

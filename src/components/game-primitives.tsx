@@ -42,7 +42,9 @@ export function Meter({
         aria-valuemin={0}
         aria-valuemax={max}
       >
-        <span style={{ width: `${Math.min(100, Math.max(0, (value / max) * 100))}%` }} />
+        <span
+          style={{ width: `${max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0}%` }}
+        />
       </div>
     </div>
   );

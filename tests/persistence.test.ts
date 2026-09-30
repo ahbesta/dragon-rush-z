@@ -284,3 +284,238 @@ describe("Persistência PostgreSQL e transações", () => {
     }
   });
 });
+
+describe("Combate manual persistente", () => {
+  it("valida Ki no servidor e mantém a batalha intacta ao rejeitar o golpe", async () => {
+    await database.db
+      .update(s.characters)
+      .set({ level: 2, ki: 10 })
+      .where(eq(s.characters.userId, owner));
+    await command({ action: "technique.learn", techniqueId: "rajada-ki" });
+    await command({ action: "combat.mode", mode: "manual" });
+    await command({ action: "battle", areaId: "floresta", enemyId: "bandido" });
+    const before = (await readSnapshot(database.db, owner))!;
+    await expect(
+      command({
+        action: "battle.turn",
+        battleId: before.activeBattle!.id,
+        round: 1,
+        techniqueId: "rajada-ki",
+      }),
+    ).rejects.toMatchObject({ code: "NO_KI" });
+    const after = (await readSnapshot(database.db, owner))!;
+    expect(after.character).toEqual(before.character);
+    expect(after.activeBattle).toEqual(before.activeBattle);
+  });
+  it("falha tardia restaura modo, estado ativo, drops e recompensa", async () => {
+    await command({ action: "combat.mode", mode: "manual" });
+    await command({ action: "battle", areaId: "floresta", enemyId: "bandido" });
+    const before = (await readSnapshot(database.db, owner))!;
+    await database.db.execute(
+      sql`CREATE FUNCTION test_manual_failure() RETURNS trigger AS $$ BEGIN IF NEW.zeni > OLD.zeni THEN RAISE EXCEPTION 'falha de teste'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql`,
+    );
+    await database.db.execute(
+      sql`CREATE TRIGGER test_manual_reward_failure BEFORE UPDATE ON characters FOR EACH ROW EXECUTE FUNCTION test_manual_failure()`,
+    );
+    try {
+      await expect(command({ action: "combat.mode", mode: "automatic" })).rejects.toThrow();
+      const after = (await readSnapshot(database.db, owner))!;
+      expect(after.character).toEqual(before.character);
+      expect(after.activeBattle).toEqual(before.activeBattle);
+      expect(after.latestBattle).toBeNull();
+      expect(after.inventory).toEqual([]);
+    } finally {
+      await database.db.execute(sql`DROP TRIGGER test_manual_reward_failure ON characters`);
+      await database.db.execute(sql`DROP FUNCTION test_manual_failure()`);
+    }
+    await command({ action: "combat.mode", mode: "automatic" });
+    expect((await readSnapshot(database.db, owner))!.character).toMatchObject({ xp: 40, zeni: 70 });
+  });
+  async function start() {
+    await command({ action: "combat.mode", mode: "manual" });
+    await command({ action: "battle", areaId: "floresta", enemyId: "bandido" });
+    return (await readSnapshot(database.db, owner))!;
+  }
+  it("mantém automático para personagens existentes e salva a preferência", async () => {
+    expect((await readSnapshot(database.db, owner))!.character.combatMode).toBe("automatic");
+    await command({ action: "combat.mode", mode: "manual" });
+    expect((await readSnapshot(database.db, owner))!.character.combatMode).toBe("manual");
+    await command({ action: "training.start" });
+    await command({ action: "combat.mode", mode: "automatic" });
+    expect((await readSnapshot(database.db, owner))!.character.combatMode).toBe("automatic");
+    expect((await readSnapshot(database.db, owner))!.activity).not.toBeNull();
+  });
+  it("salva a batalha sem conceder recompensas antecipadas", async () => {
+    const snap = await start();
+    expect(snap.activeBattle).toMatchObject({ round: 1, enemyHp: 90 });
+    expect(snap.character).toMatchObject({ hp: 180, xp: 0, zeni: 50 });
+    expect(snap.latestBattle).toBeNull();
+    expect(snap.inventory).toEqual([]);
+    expect(await database.db.select().from(s.activeBattles)).toHaveLength(1);
+  });
+  it("replay da mesma rodada não aplica danos duas vezes", async () => {
+    const snap = await start();
+    const turn = {
+      action: "battle.turn",
+      battleId: snap.activeBattle!.id,
+      round: 1,
+      techniqueId: "chute",
+      idempotencyKey: randomUUID(),
+    };
+    const results = await Promise.all(
+      [0, 1, 2].map(() => executeAction(database.db, owner, turn, { random: () => 0 })),
+    );
+    expect(results[0]).toEqual(results[2]);
+    const after = (await readSnapshot(database.db, owner))!;
+    expect(after.activeBattle?.round).toBe(2);
+    expect(
+      after.activeBattle?.events.filter((e) => e.type === "attack" && e.actor === "player"),
+    ).toHaveLength(1);
+    expect(after.character.xp).toBe(0);
+  });
+  it("rodadas concorrentes com chaves diferentes avançam uma vez", async () => {
+    const snap = await start();
+    const results = await Promise.allSettled(
+      [0, 1, 2].map(() =>
+        command({
+          action: "battle.turn",
+          battleId: snap.activeBattle!.id,
+          round: 1,
+          techniqueId: "soco",
+        }),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(
+      results
+        .filter((r) => r.status === "rejected")
+        .every((r) => r.status === "rejected" && r.reason.code === "STALE_TURN"),
+    ).toBe(true);
+    expect((await readSnapshot(database.db, owner))!.activeBattle?.round).toBe(2);
+  });
+  it("valida batalha, técnica e recarga sem avançar o estado", async () => {
+    const snap = await start();
+    await expect(
+      command({ action: "battle.turn", battleId: randomUUID(), round: 1, techniqueId: "soco" }),
+    ).rejects.toMatchObject({ code: "BATTLE_NOT_PENDING" });
+    await expect(
+      command({
+        action: "battle.turn",
+        battleId: snap.activeBattle!.id,
+        round: 1,
+        techniqueId: "kamehameha",
+      }),
+    ).rejects.toMatchObject({ code: "TECHNIQUE_LOCKED" });
+    await command({
+      action: "battle.turn",
+      battleId: snap.activeBattle!.id,
+      round: 1,
+      techniqueId: "chute",
+    });
+    const before = (await readSnapshot(database.db, owner))!;
+    await expect(
+      command({
+        action: "battle.turn",
+        battleId: snap.activeBattle!.id,
+        round: 2,
+        techniqueId: "chute",
+      }),
+    ).rejects.toMatchObject({ code: "TECHNIQUE_COOLDOWN" });
+    expect((await readSnapshot(database.db, owner))!.activeBattle).toEqual(before.activeBattle);
+    expect((await readSnapshot(database.db, owner))!.character.hp).toBe(before.character.hp);
+  });
+  it("impede outra luta, treinamento, item e equipamento durante o combate", async () => {
+    await start();
+    for (const action of [
+      { action: "battle", areaId: "floresta", enemyId: "lobo" },
+      { action: "training.start" },
+      { action: "rest.start" },
+      { action: "item.use", itemId: "pocao-hp" },
+      { action: "equipment.equip", itemId: "bastao" },
+      { action: "technique.select", techniqueIds: ["soco"] },
+    ])
+      await expect(command(action)).rejects.toMatchObject({ code: "BATTLE_PENDING" });
+    expect(await database.db.select().from(s.activeBattles)).toHaveLength(1);
+  });
+  it("assumir automático preserva golpes anteriores e premia uma vez", async () => {
+    const snap = await start();
+    await command({
+      action: "battle.turn",
+      battleId: snap.activeBattle!.id,
+      round: 1,
+      techniqueId: "soco",
+    });
+    const before = (await readSnapshot(database.db, owner))!;
+    const mode = { action: "combat.mode", mode: "automatic", idempotencyKey: randomUUID() };
+    const results = await Promise.all(
+      [0, 1, 2].map(() => executeAction(database.db, owner, mode, { random: () => 0 })),
+    );
+    expect(results[0].battle?.events.slice(0, before.activeBattle!.events.length)).toEqual(
+      before.activeBattle!.events,
+    );
+    expect(results[0].battle?.id).toBe(snap.activeBattle!.id);
+    const after = (await readSnapshot(database.db, owner))!;
+    expect(after.activeBattle).toBeNull();
+    expect(after.character).toMatchObject({ combatMode: "automatic", xp: 40, zeni: 70 });
+    expect(after.character.nextBattleAt).not.toBeNull();
+    expect(await database.db.select().from(s.battles)).toHaveLength(1);
+    await expect(
+      command({
+        action: "battle.turn",
+        battleId: snap.activeBattle!.id,
+        round: 2,
+        techniqueId: "soco",
+      }),
+    ).rejects.toMatchObject({ code: "BATTLE_NOT_PENDING" });
+    await command({ action: "combat.mode", mode: "automatic" });
+    expect((await readSnapshot(database.db, owner))!.character.zeni).toBe(70);
+  });
+  it("conclusão manual concorrente concede uma única recompensa", async () => {
+    const snap = await start();
+    for (const [round, techniqueId] of [
+      [1, "chute"],
+      [2, "soco"],
+      [3, "chute"],
+    ] as const)
+      await command({ action: "battle.turn", battleId: snap.activeBattle!.id, round, techniqueId });
+    const end = {
+      action: "battle.turn",
+      battleId: snap.activeBattle!.id,
+      round: 4,
+      techniqueId: "soco",
+      idempotencyKey: randomUUID(),
+    };
+    const results = await Promise.all(
+      [0, 1, 2].map(() => executeAction(database.db, owner, end, { random: () => 0 })),
+    );
+    expect(results[0].battle?.outcome).toBe("victory");
+    const after = (await readSnapshot(database.db, owner))!;
+    expect(after.character).toMatchObject({ xp: 40, zeni: 70 });
+    expect(after.activeBattle).toBeNull();
+    expect(after.inventory.find((i) => i.itemId === "bastao")?.quantity).toBe(1);
+    expect(await database.db.select().from(s.battles)).toHaveLength(1);
+  });
+  it("não permite controlar uma batalha pertencente a outro usuário", async () => {
+    const snap = await start();
+    const other = randomUUID();
+    await database.db
+      .insert(s.user)
+      .values({ id: other, name: "Outro", email: `${other}@example.test` });
+    await createCharacter(database.db, other, {
+      name: "Outro",
+      raceId: "humano",
+      idempotencyKey: randomUUID(),
+    });
+    await expect(
+      executeAction(database.db, other, {
+        action: "battle.turn",
+        battleId: snap.activeBattle!.id,
+        round: 1,
+        techniqueId: "soco",
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: "BATTLE_NOT_PENDING" });
+    expect((await readSnapshot(database.db, owner))!.activeBattle?.round).toBe(1);
+    expect((await readSnapshot(database.db, other))!.activeBattle).toBeNull();
+  });
+});

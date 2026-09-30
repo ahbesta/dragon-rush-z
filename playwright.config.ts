@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { config } from "dotenv";
 config({ path: ".env.local", quiet: true });
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
@@ -9,14 +10,15 @@ export default defineConfig({
   expect: { timeout: 15000 },
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [{ name: "desktop", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npm run dev",
-    url: "http://localhost:3000/login",
+    command:
+      process.env.E2E_SERVER_COMMAND ?? `npm run dev -- --port ${new URL(baseURL).port || "3000"}`,
+    url: `${baseURL}/login`,
     reuseExistingServer: true,
     timeout: 120000,
   },

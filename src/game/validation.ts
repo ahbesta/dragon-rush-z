@@ -18,6 +18,18 @@ export const characterInput = z
   .strict();
 const key = { idempotencyKey: z.uuid() };
 export const actionInput = z.discriminatedUnion("action", [
+  z
+    .object({ ...key, action: z.literal("combat.mode"), mode: z.enum(["automatic", "manual"]) })
+    .strict(),
+  z
+    .object({
+      ...key,
+      action: z.literal("battle.turn"),
+      battleId: z.uuid(),
+      round: z.number().int().min(1).max(60),
+      techniqueId: id,
+    })
+    .strict(),
   z.object({ ...key, action: z.literal("training.start") }).strict(),
   z.object({ ...key, action: z.literal("rest.start") }).strict(),
   z.object({ ...key, action: z.literal("activity.finish"), activityId: z.uuid() }).strict(),

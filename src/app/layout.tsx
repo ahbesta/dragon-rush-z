@@ -10,6 +10,7 @@ import "@fontsource/jetbrains-mono/500.css";
 import "./globals.css";
 import "./game-theme.css";
 import "./artwork.css";
+import "./combat.css";
 export const metadata: Metadata = {
   title: "Dragon Rush Z • Sua jornada começa agora",
   description:

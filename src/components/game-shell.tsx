@@ -43,6 +43,7 @@ import {
   Scene,
 } from "./game-primitives";
 import { BattleLog } from "./battle-log";
+import { CombatModeSelector, ManualBattle } from "./combat-controls";
 import { GameLobby } from "./game-lobby";
 import { transformationArtwork, destinationArtwork, techniqueArtwork } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
@@ -157,7 +158,16 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
         return;
       }
       retryRef.current = null;
-      if (data.snapshot) adopt(data.snapshot);
+      if (data.snapshot) {
+        adopt(data.snapshot);
+        if (
+          (data.snapshot.activeBattle?.id !== snapshot.activeBattle?.id &&
+            data.snapshot.activeBattle) ||
+          (data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id &&
+            data.snapshot.latestBattle)
+        )
+          go("battle");
+      }
       setNotice({ text: data.message ?? "Ação concluída.", error: false });
     } catch {
       setNotice({
@@ -177,7 +187,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const battleWait = c.nextBattleAt
     ? Math.max(0, Math.ceil((new Date(c.nextBattleAt).getTime() - now) / 1000))
     : 0;
-  const blocked = busy || Boolean(activity);
+  const blocked = busy || Boolean(activity) || Boolean(snapshot.activeBattle);
   const combatBlocked = blocked || battleWait > 0 || c.hp <= 0;
   const currentSection = sections.find((s) => s.id === section)!;
   const selectedArea = catalog.areas.find((a) => a.id === areaId) ?? catalog.areas[0];
@@ -323,6 +333,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               </span>
             </div>
           )}
+          <CombatModeSelector snapshot={snapshot} busy={busy} onAction={act} />
           {notice && (
             <div
               className={`notice ${notice.error ? "error" : "success"}`}
@@ -334,6 +345,14 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 <X size={16} />
               </button>
             </div>
+          )}
+          {snapshot.activeBattle && (
+            <ManualBattle
+              key={snapshot.activeBattle.id}
+              snapshot={snapshot}
+              busy={busy}
+              onAction={act}
+            />
           )}
           {activity && (
             <div className="activity-banner">
@@ -723,9 +742,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     )}
                   </div>
                   <p className="panel-description">
-                    {section === "explore"
-                      ? "Ao explorar, você encontrará um inimigo desta área. O combate é automático."
-                      : "Escolha um adversário e suas técnicas serão usadas na ordem definida."}
+                    {c.combatMode === "manual"
+                      ? "Encontre um adversário e escolha suas técnicas a cada rodada."
+                      : section === "explore"
+                        ? "Ao explorar, você encontrará um inimigo desta área. O combate é automático."
+                        : "Escolha um adversário e suas técnicas serão usadas na ordem definida."}
                   </p>
                   <div className="enemy-list">
                     {catalog.encounters
@@ -806,7 +827,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   </button>
                 </section>
               )}
-              {snapshot.latestBattle && (
+              {snapshot.latestBattle && !snapshot.activeBattle && (
                 <BattleLog
                   key={snapshot.latestBattle.id}
                   battle={snapshot.latestBattle}
@@ -907,7 +928,10 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 <div>
                   <span className="eyebrow orange">SUA ESTRATÉGIA</span>
                   <h3>Prioridade de combate</h3>
-                  <p>As técnicas são usadas nesta ordem quando há Ki e o cooldown permite.</p>
+                  <p>
+                    No automático, esta é a ordem dos golpes. No manual, escolha entre estas
+                    técnicas e Soco.
+                  </p>
                 </div>
                 <div className="priority-chips">
                   {c.selectedTechniques.map((id, index) => (

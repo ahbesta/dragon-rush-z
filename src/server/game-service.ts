@@ -4,12 +4,19 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { deriveStats } from "@/game/attributes";
 import { applyExperience, xpRequired } from "@/game/progression";
 import { unmetRequirements } from "@/game/requirements";
-import { simulateBattle } from "@/game/combat";
+import {
+  advanceCombat,
+  CombatRuleError,
+  createCombat,
+  finishCombat,
+  presentCombat,
+} from "@/game/combat";
 import { actionInput, characterInput } from "@/game/validation";
 import type {
   BattleResult,
   Catalog,
   CharacterState,
+  CombatState,
   GameSnapshot,
   ItemDefinition,
 } from "@/game/types";
@@ -170,7 +177,17 @@ export async function executeAction(
       .select()
       .from(s.activities)
       .where(and(eq(s.activities.characterId, character.id), isNull(s.activities.completedAt)));
-    if (pending && input.action !== "activity.finish")
+    const [active] = await tx
+      .select()
+      .from(s.activeBattles)
+      .where(eq(s.activeBattles.characterId, character.id));
+    if (active && input.action !== "battle.turn" && input.action !== "combat.mode")
+      throw new GameError(
+        "BATTLE_PENDING",
+        "Conclua o combate atual antes de iniciar outra ação.",
+        409,
+      );
+    if (pending && input.action !== "activity.finish" && input.action !== "combat.mode")
       throw new GameError(
         "ACTIVITY_PENDING",
         "Conclua a atividade atual antes de iniciar outra ação.",
@@ -181,7 +198,79 @@ export async function executeAction(
     const policy = (id: string) =>
       catalog.policies.find((p) => p.id === id) ?? missing("Regras de atividade indisponíveis.");
     const stats = statsFor(character, catalog);
+    const completeBattle = async (battle: BattleResult) => {
+      character.hp = battle.playerHp;
+      character.ki = battle.playerKi;
+      character.nextBattleAt = new Date(now.getTime() + policy("battle").durationSeconds * 1000);
+      if (battle.outcome === "victory") {
+        Object.assign(
+          character,
+          applyExperience(character.level, character.xp, battle.xp, character.base, race),
+        );
+        character.zeni += battle.zeni;
+        character.flags = [...new Set([...character.flags, `defeated:${battle.enemyId}`])];
+        for (const drop of battle.drops)
+          await addItem(tx, character.id, drop.itemId, drop.quantity);
+      }
+      await tx.insert(s.battles).values({
+        id: battle.id,
+        characterId: character.id,
+        enemyId: battle.enemyId,
+        result: battle,
+        createdAt: now,
+      });
+      await tx.delete(s.activeBattles).where(eq(s.activeBattles.characterId, character.id));
+      result.battle = battle;
+      const enemyName = catalog.enemies.find((e) => e.id === battle.enemyId)?.name ?? "Inimigo";
+      result.message =
+        battle.outcome === "victory"
+          ? `${enemyName} derrotado! +${battle.xp} XP e +${battle.zeni} Zeni.`
+          : battle.outcome === "defeat"
+            ? `Derrota contra ${enemyName}. Descanse e tente novamente.`
+            : "Empate. Nenhuma recompensa concedida.";
+      await appendHistory(tx, character.id, "battle", result.message);
+    };
     switch (input.action) {
+      case "combat.mode": {
+        character.combatMode = input.mode;
+        if (active && input.mode === "automatic") {
+          await completeBattle(finishCombat(active.state, random));
+        } else {
+          result.message =
+            input.mode === "manual"
+              ? "Combate manual selecionado. Você escolhe cada técnica."
+              : "Combate automático selecionado.";
+        }
+        break;
+      }
+      case "battle.turn": {
+        if (!active || active.id !== input.battleId)
+          throw new GameError("BATTLE_NOT_PENDING", "Este combate não está em andamento.", 409);
+        if (input.round !== active.state.round + 1)
+          throw new GameError(
+            "STALE_TURN",
+            "Esta rodada já foi resolvida. Atualize o combate.",
+            409,
+          );
+        let next: CombatState;
+        try {
+          next = advanceCombat(active.state, input.techniqueId, random);
+        } catch (error) {
+          if (error instanceof CombatRuleError) throw new GameError(error.code, error.message, 409);
+          throw error;
+        }
+        if (next.result) await completeBattle(next.result);
+        else {
+          character.hp = next.player.hp;
+          character.ki = next.player.ki;
+          await tx
+            .update(s.activeBattles)
+            .set({ state: next, updatedAt: now })
+            .where(eq(s.activeBattles.id, active.id));
+          result.message = `Rodada ${next.round} resolvida. Escolha sua próxima técnica.`;
+        }
+        break;
+      }
       case "training.start":
       case "rest.start": {
         const kind = input.action === "training.start" ? "training" : "rest";
@@ -299,7 +388,7 @@ export async function executeAction(
         const playerTechniques = available
           .map((id) => catalog.techniques.find((t) => t.id === id))
           .filter((t): t is Catalog["techniques"][number] => Boolean(t));
-        const battle = simulateBattle({
+        const combat = createCombat({
           id: randomUUID(),
           player: {
             name: character.name,
@@ -313,34 +402,17 @@ export async function executeAction(
           drops: catalog.drops,
           random,
         });
-        character.hp = battle.playerHp;
-        character.ki = battle.playerKi;
-        character.nextBattleAt = new Date(now.getTime() + policy("battle").durationSeconds * 1000);
-        if (battle.outcome === "victory") {
-          Object.assign(
-            character,
-            applyExperience(character.level, character.xp, battle.xp, character.base, race),
-          );
-          character.zeni += battle.zeni;
-          character.flags = [...new Set([...character.flags, `defeated:${enemy.id}`])];
-          for (const drop of battle.drops)
-            await addItem(tx, character.id, drop.itemId, drop.quantity);
-        }
-        await tx.insert(s.battles).values({
-          id: battle.id,
-          characterId: character.id,
-          enemyId: enemy.id,
-          result: battle,
-          createdAt: now,
-        });
-        result.battle = battle;
-        result.message =
-          battle.outcome === "victory"
-            ? `${enemy.name} derrotado! +${battle.xp} XP e +${battle.zeni} Zeni.`
-            : battle.outcome === "defeat"
-              ? `Derrota contra ${enemy.name}. Descanse e tente novamente.`
-              : "Empate. Nenhuma recompensa concedida.";
-        await appendHistory(tx, character.id, "battle", result.message);
+        if (character.combatMode === "manual") {
+          await tx.insert(s.activeBattles).values({
+            id: combat.id,
+            characterId: character.id,
+            state: combat,
+            createdAt: now,
+            updatedAt: now,
+          });
+          result.message = `Combate contra ${enemy.name} iniciado. Escolha sua técnica.`;
+          await appendHistory(tx, character.id, "battle.start", result.message);
+        } else await completeBattle(finishCombat(combat, random));
         break;
       }
       case "item.use":
@@ -458,6 +530,7 @@ export async function executeAction(
         base: character.base,
         equipment: character.equipment,
         selectedTechniques: character.selectedTechniques,
+        combatMode: character.combatMode,
         flags: character.flags,
         nextBattleAt: character.nextBattleAt,
         updatedAt: now,
@@ -486,6 +559,7 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
         activities: { id: string; kind: "training" | "rest"; finishesAt: string }[];
         history: GameSnapshot["history"];
         battles: { result: BattleResult }[];
+        active: { state: CombatState }[];
         now: string;
       };
       const result = await tx.execute<PersonalData>(sql`SELECT
@@ -495,8 +569,10 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
       ${rowsAsJson(s.activities, { where: and(eq(s.activities.characterId, character.id), isNull(s.activities.completedAt)) })} AS activities,
       ${rowsAsJson(s.history, { where: eq(s.history.characterId, character.id), orderBy: sql`${s.history.createdAt} DESC`, limit: 10 })} AS history,
       ${rowsAsJson(s.battles, { where: eq(s.battles.characterId, character.id), orderBy: sql`${s.battles.createdAt} DESC`, limit: 1 })} AS battles,
+      ${rowsAsJson(s.activeBattles, { where: eq(s.activeBattles.characterId, character.id) })} AS active,
       clock_timestamp() AS now`);
-      const { inventory, learned, unlocked, activities, history, battles, now } = result.rows[0];
+      const { inventory, learned, unlocked, activities, history, battles, active, now } =
+        result.rows[0];
       const {
         userId: _owner,
         createdAt: _created,
@@ -533,6 +609,7 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
           createdAt: new Date(h.createdAt).toISOString(),
         })),
         latestBattle: battles[0]?.result ?? null,
+        activeBattle: active[0] ? presentCombat(active[0].state) : null,
       };
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },

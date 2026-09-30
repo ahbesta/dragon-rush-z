@@ -44,7 +44,7 @@ Em outro terminal, execute migrations, seed e `dev`. PGlite persiste em `.local/
 - Dashboard, atributos, HP, Ki, XP, nível, Power Level, Zeni e atividades recentes.
 - Treinamento: 30 segundos e 50 XP; descanso gratuito: 30 segundos e recuperação completa.
 - Terra: Floresta (nível 1), Montanhas (2), Deserto (3) e Região da Red Ribbon (4).
-- Combates automáticos contra Lobo, Bandido, Dinossauro, Saibaman e Soldado da Red Ribbon.
+- Combates automáticos ou manuais contra Lobo, Bandido, Dinossauro, Saibaman e Soldado da Red Ribbon.
 - Drops, consumíveis, equipamentos e bônus de atributos.
 - Soco e Chute iniciais; Rajada de Ki aprendida no nível 2 por 30 Zeni.
 - Piccolo Daimao: nível 6, vitória contra Soldado da Red Ribbon, duas fases e drops especiais.
@@ -80,6 +80,16 @@ Os catálogos ficam no banco. O seed em `src/server/db/seed-data.ts` é a fonte 
 
 O motor recebe uma fonte de aleatoriedade injetável para testes. Em execução real, o servidor usa `crypto.randomInt`. Batalhas terminam em derrota, vitória ou após 60 rodadas; empate e derrota não concedem recompensas.
 
+### Escolher como lutar
+
+O seletor **Modo de combate** aparece em todas as telas do personagem. A preferência é salva no banco e continua após logout. Personagens existentes começam em **Automático**, preservando o comportamento anterior.
+
+No **Manual**, exploração, adversários e bosses iniciam uma batalha persistente. Escolha uma das técnicas da sua prioridade de combate ou Soco a cada rodada. O servidor valida a técnica, Ki e recarga e resolve os dois lados conforme a iniciativa. Recarregar ou fechar a página não reinicia a batalha. Treinamento, descanso, itens e alterações de equipamento ficam bloqueados durante a luta.
+
+Você pode trocar o modo a qualquer momento, inclusive durante uma atividade. Ao escolher **Automático** com uma batalha manual em andamento, o mesmo motor resolve as rodadas restantes, preservando HP, Ki, recargas, fases e log. A recompensa só é concedida quando a batalha termina, em uma única transação.
+
+`characters.combat_mode` armazena a preferência; `active_battles` guarda o estado privado e serializável de uma única batalha por personagem. A API retorna somente a projeção necessária para exibir os recursos, técnicas e eventos. `combat.mode` aceita um modo; `battle.turn` aceita o ID da batalha, a rodada esperada e o ID da técnica. A rodada esperada e a chave de idempotência impedem que requisições simultâneas avancem o mesmo turno duas vezes.
+
 ### API e proteção
 
 | Endpoint                    | Finalidade                                        |
@@ -113,6 +123,8 @@ npm.cmd run build
 
 O teste de navegador usa Chromium; instale-o com `npx playwright install chromium` se necessário. Ele verifica cadastro até boss, treinamento real de 30 segundos, sessão persistente, segurança da API e layout mobile. A preparação de nível 6 usa uma fixture administrativa para evitar dezenas de combates; nível 2 e aprendizado são obtidos pelo fluxo real. A conta de teste é removida ao final. Capturas ficam em `.local/screenshots`.
 
+Os testes de combate cobrem escolha de golpes, Ki insuficiente, recargas, retomada, conclusão manual, troca para automático, bosses e persistência da preferência após login. Para testar uma instância separada, configure `E2E_BASE_URL` e opcionalmente `E2E_SERVER_COMMAND` (por exemplo, `npm run start -- --port 3001`, após o build). `BETTER_AUTH_URL` deve corresponder à URL dessa instância.
+
 ## Deploy na Vercel
 
 1. Importe `ahbesta/dragon-rush-z` na Vercel, usando o preset **Next.js**, Node.js 24, `npm run build` e diretório raiz padrão.
@@ -122,6 +134,8 @@ O teste de navegador usa Chromium; instale-o com `npx playwright install chromiu
 5. Faça o deploy e verifique cadastro, login, criação e treinamento na URL definitiva.
 
 Não use prefixo `NEXT_PUBLIC_` para segredos. `.env.local`, dados locais e relatórios de testes são ignorados pelo Git. `DIRECT_DATABASE_URL` é administrativa e só é necessária onde migrations são executadas.
+
+A migration `0001_abandoned_mysterio.sql` adiciona os modos de combate, preserva os personagens e concede acesso à nova tabela à role de runtime existente. Aplique-a com `npm run db:migrate` usando a conexão administrativa antes de publicar esta versão.
 
 Use branch/banco separado do Neon para desenvolvimento e previews. Cada ambiente deve ter sua URL de autenticação configurada; origens não são liberadas por wildcard. Ao criar tabelas operacionais novas, inclua os grants de runtime na migration. O workflow de CI verifica formatação, lint, tipos, testes locais e build sem credenciais externas.
 
