@@ -1,5 +1,7 @@
 import { Shield, Swords, Wind, Heart, Zap, Package, CircleDot } from "lucide-react";
 import type { Attributes, ItemDefinition } from "@/game/types";
+import { itemArtwork } from "@/lib/game-art";
+import { ArtworkImage } from "./artwork-image";
 export const attributeLabels: Record<keyof Attributes, string> = {
   strength: "Força",
   defense: "Defesa",
@@ -45,7 +47,14 @@ export function Meter({
     </div>
   );
 }
-export function ItemIcon({ item }: { item?: ItemDefinition }) {
+export function ItemIcon({
+  item,
+  showcase = false,
+}: {
+  item?: ItemDefinition;
+  showcase?: boolean;
+}) {
+  const art = item ? itemArtwork[item.id] : undefined;
   const Icon = !item
     ? Package
     : item.slot === "weapon"
@@ -58,8 +67,18 @@ export function ItemIcon({ item }: { item?: ItemDefinition }) {
             ? CircleDot
             : Heart;
   return (
-    <span className={`item-icon rarity-${item?.rarity ?? "common"}`}>
-      <Icon size={24} />
+    <span
+      className={`item-icon rarity-${item?.rarity ?? "common"} ${art ? "has-art" : ""} ${showcase ? "item-showcase" : ""}`}
+    >
+      {art ? (
+        <ArtworkImage
+          art={art}
+          sizes={showcase ? "(max-width: 700px) 320px, 220px" : "64px"}
+          fallback={<Icon size={24} />}
+        />
+      ) : (
+        <Icon size={24} />
+      )}
     </span>
   );
 }

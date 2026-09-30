@@ -25,7 +25,7 @@ test.afterAll(async () => {
   }
 });
 async function go(page: Page, label: string) {
-  if (page.viewportSize()!.width < 800)
+  if (await page.getByRole("button", { name: "Abrir menu", exact: true }).isVisible())
     await page.getByRole("button", { name: "Abrir menu" }).click();
   await page.getByRole("button", { name: label, exact: true }).click();
 }

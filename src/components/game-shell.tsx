@@ -44,6 +44,8 @@ import {
 } from "./game-primitives";
 import { BattleLog } from "./battle-log";
 import { GameLobby } from "./game-lobby";
+import { transformationArtwork } from "@/lib/game-art";
+import { ArtworkImage } from "./artwork-image";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -828,8 +830,8 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     const reasons = requirements(item.requirements);
                     return (
                       <section className="panel inventory-card" key={item.id}>
+                        <ItemIcon item={item} showcase />
                         <div className="item-top">
-                          <ItemIcon item={item} />
                           <span className={`rarity-label rarity-${item.rarity}`}>
                             {item.rarity === "rare"
                               ? "RARO"
@@ -1015,23 +1017,37 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   .filter(
                     (t) => !t.requirements.raceIds || t.requirements.raceIds.includes(c.raceId),
                   )
-                  .map((form) => (
-                    <section className="panel transformation-card" key={form.id}>
-                      <span className="form-symbol">
-                        <Flame size={42} />
-                      </span>
-                      <span className="badge">
-                        <LockKeyhole size={12} /> BLOQUEADA
-                      </span>
-                      <h3>{form.name}</h3>
-                      <p>{form.description}</p>
-                      <div>
-                        <span>Nível {form.requirements.minLevel}+</span>
-                        <span>Power Level {n(form.requirements.minPower ?? 0)}+</span>
-                        <span>Conquista específica de desbloqueio</span>
-                      </div>
-                    </section>
-                  ))}
+                  .map((form) => {
+                    const art = transformationArtwork[form.id];
+                    return (
+                      <section
+                        className={`panel transformation-card form-${form.id}`}
+                        key={form.id}
+                      >
+                        <span className="transformation-portrait">
+                          {art ? (
+                            <ArtworkImage
+                              art={art}
+                              sizes="(max-width: 700px) 90vw, (max-width: 1000px) 45vw, 400px"
+                              fallback={<Flame size={42} />}
+                            />
+                          ) : (
+                            <Flame size={42} />
+                          )}
+                        </span>
+                        <span className="badge">
+                          <LockKeyhole size={12} /> BLOQUEADA
+                        </span>
+                        <h3>{form.name}</h3>
+                        <p>{form.description}</p>
+                        <div>
+                          <span>Nível {form.requirements.minLevel}+</span>
+                          <span>Power Level {n(form.requirements.minPower ?? 0)}+</span>
+                          <span>Conquista específica de desbloqueio</span>
+                        </div>
+                      </section>
+                    );
+                  })}
               </div>
               {!catalog.transformations.some((t) => t.requirements.raceIds?.includes(c.raceId)) && (
                 <section className="panel empty-state">

@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, ShieldCheck, Swords, Zap, LoaderCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Brand } from "./brand";
+import { ArtworkImage } from "./artwork-image";
+import { characterArtwork } from "@/lib/game-art";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -47,6 +49,11 @@ export function AuthScreen() {
       <section className="auth-art">
         <Brand light />
         <div className="auth-world-art" aria-hidden="true" />
+        <div className="auth-fighters" aria-hidden="true">
+          <ArtworkImage art={characterArtwork.goku} sizes="(max-width: 700px) 28vw, 15vw" preload />
+          <ArtworkImage art={characterArtwork.vegeta} sizes="(max-width: 700px) 28vw, 15vw" />
+          <ArtworkImage art={characterArtwork.piccolo} sizes="(max-width: 700px) 28vw, 15vw" />
+        </div>
         <div className="auth-story">
           <span className="eyebrow">UM NOVO GUERREIRO. UMA NOVA HISTÓRIA.</span>
           <h1>

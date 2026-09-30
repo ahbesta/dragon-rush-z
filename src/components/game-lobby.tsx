@@ -46,15 +46,14 @@ export function GameLobby({ snapshot, busy, onNavigate, onTrain, onRest }: Props
     <section className="game-lobby" aria-label="Início da jornada">
       <div className="lobby-hero">
         <div className="lobby-hero-art" aria-hidden="true">
-          <span className="hero-fighter fighter-vegeta">
-            <span>VEGETA</span>
-          </span>
-          <span className="hero-fighter fighter-piccolo">
-            <span>PICCOLO</span>
-          </span>
-          <span className="hero-fighter fighter-goku">
-            <span>GOKU</span>
-          </span>
+          <span className="hero-fighter fighter-vegeta" />
+          <span className="hero-fighter fighter-piccolo" />
+          <span className="hero-fighter fighter-goku" />
+        </div>
+        <div className="hero-fighter-names" aria-hidden="true">
+          <span>VEGETA</span>
+          <span>GOKU</span>
+          <span>PICCOLO</span>
         </div>
         <div className="lobby-hero-copy">
           <span className="lobby-chapter">

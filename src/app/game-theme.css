@@ -464,17 +464,6 @@ h3 {
   box-shadow: 0 12px 25px #0009;
   overflow: hidden;
 }
-.hero-fighter > span {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  color: white;
-  font-family: "Barlow Condensed", sans-serif;
-  font-style: italic;
-  font-weight: 800;
-  font-size: 30px;
-  text-shadow: 0 2px 8px #000;
-}
 .fighter-vegeta {
   left: 0;
   top: 35px;
@@ -1283,10 +1272,6 @@ input:focus {
   .lobby-player-summary > span {
     font-size: 6px;
   }
-  .hero-fighter > span {
-    font-size: 24px;
-    left: 10px;
-  }
   .lobby-menu {
     gap: 11px;
   }
@@ -1499,11 +1484,6 @@ input:focus {
   .fighter-piccolo {
     right: 0;
     top: 26px;
-  }
-  .hero-fighter > span {
-    font-size: 20px;
-    bottom: 12px;
-    left: 8px;
   }
   .lobby-hero-actions {
     margin-top: 24px;
