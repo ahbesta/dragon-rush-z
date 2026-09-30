@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ShieldCheck, Swords, Zap, LoaderCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { Brand, DragonBall } from "./brand";
+import { Brand } from "./brand";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -46,18 +46,13 @@ export function AuthScreen() {
     <main className="auth-layout">
       <section className="auth-art">
         <Brand light />
-        <div className="auth-orbit">
-          <span className="orbit orbit-one" />
-          <span className="orbit orbit-two" />
-          <DragonBall stars={4} className="hero-ball" />
-          <span className="orbit-label">PODER SEM LIMITES.</span>
-        </div>
+        <div className="auth-world-art" aria-hidden="true" />
         <div className="auth-story">
           <span className="eyebrow">UM NOVO GUERREIRO. UMA NOVA HISTÓRIA.</span>
           <h1>
-            O próximo capítulo
+            SUA LENDA
             <br />
-            começa com <em>você.</em>
+            <em>COMEÇA AGORA.</em>
           </h1>
           <p>
             Escolha sua raça. Domine seu Ki. Explore a Terra.

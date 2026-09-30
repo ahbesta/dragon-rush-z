@@ -1,4 +1,17 @@
 import { Star } from "lucide-react";
+
+const raceEmblems: Record<string, string> = {
+  saiyajin: "悟",
+  humano: "人",
+  namekuseijin: "龍",
+  majin: "魔",
+  freeza: "帝",
+};
+
+export function RaceEmblem({ raceId }: { raceId: string }) {
+  return <span aria-hidden="true">{raceEmblems[raceId] ?? "武"}</span>;
+}
+
 export function DragonBall({ stars = 4, className = "" }: { stars?: number; className?: string }) {
   return (
     <span className={`dragon-ball ${className}`} aria-hidden="true">

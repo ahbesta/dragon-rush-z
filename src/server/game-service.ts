@@ -326,15 +326,13 @@ export async function executeAction(
           for (const drop of battle.drops)
             await addItem(tx, character.id, drop.itemId, drop.quantity);
         }
-        await tx
-          .insert(s.battles)
-          .values({
-            id: battle.id,
-            characterId: character.id,
-            enemyId: enemy.id,
-            result: battle,
-            createdAt: now,
-          });
+        await tx.insert(s.battles).values({
+          id: battle.id,
+          characterId: character.id,
+          enemyId: enemy.id,
+          result: battle,
+          createdAt: now,
+        });
         result.battle = battle;
         result.message =
           battle.outcome === "victory"

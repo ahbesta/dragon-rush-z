@@ -32,7 +32,7 @@ import type { ActionPayload } from "@/game/validation";
 import type { Attributes, GameSnapshot, Requirements } from "@/game/types";
 import { unmetRequirements } from "@/game/requirements";
 import { authClient } from "@/lib/auth-client";
-import { Brand, DragonBall } from "./brand";
+import { Brand, DragonBall, RaceEmblem } from "./brand";
 import {
   attributeIcons,
   attributeLabels,
@@ -43,6 +43,7 @@ import {
   Scene,
 } from "./game-primitives";
 import { BattleLog } from "./battle-log";
+import { GameLobby } from "./game-lobby";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -198,91 +199,74 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
 
   return (
     <div className="game-layout">
-      <aside className={`sidebar ${mobileOpen ? "open" : ""}`}>
-        <div className="sidebar-brand">
-          <Brand light />
-          <button
-            className="icon-button mobile-close"
-            aria-label="Fechar menu"
-            onClick={() => setMobileOpen(false)}
-          >
-            <X size={20} />
-          </button>
+      <div className="game-body">
+        <a className="skip-to-game" href="#game-content">
+          Ir para o jogo
+        </a>
+        <div className="game-announcement">
+          <span>
+            <DragonBall stars={1} /> TREINE. EVOLUA. SUPERE SEUS LIMITES.
+          </span>
+          <span>PRIMEIRA JORNADA · PROJETO DE FÃ</span>
         </div>
-        <div className="sidebar-label">SUA JORNADA</div>
-        <nav aria-label="Menu do jogo">
-          {sections.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              aria-label={label}
-              className={`nav-item ${section === id ? "active" : ""}`}
-              onClick={() => go(id)}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {id === "inventory" && snapshot.inventory.length > 0 ? (
-                <small>{snapshot.inventory.length}</small>
-              ) : id === "quests" ? (
-                <small className="soon-dot" />
-              ) : section === id ? (
-                <ChevronRight size={15} />
-              ) : null}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="planet-tag">
-            <span className="status-dot" />
-            <span>
-              PLANETA TERRA<small>PRIMEIRA JORNADA</small>
+        <header className="game-header">
+          <button
+            className="header-brand-button"
+            aria-label="Voltar ao início"
+            onClick={() => go("character")}
+          >
+            <Brand light />
+          </button>
+          <div className="header-right">
+            <span className="header-zeni">
+              <span>◈</span> {n(c.zeni)} <small>ZENI</small>
             </span>
-            <Compass size={23} />
-          </div>
-          <div className="sidebar-bottom-links">
-            <span>v0.1 • Projeto de fã</span>
             <button
+              className="icon-button mobile-menu"
+              aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={mobileOpen}
+              aria-controls="game-navigation"
+              onClick={() => setMobileOpen((open) => !open)}
+            >
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
+          <nav
+            id="game-navigation"
+            className={`game-navigation ${mobileOpen ? "open" : ""}`}
+            aria-label="Menu do jogo"
+          >
+            {sections.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                aria-label={label}
+                aria-current={section === id ? "page" : undefined}
+                className={`nav-item ${section === id ? "active" : ""}`}
+                onClick={() => go(id)}
+              >
+                <Icon size={17} />
+                <span>{label}</span>
+                {id === "inventory" && snapshot.inventory.length > 0 && (
+                  <small>{snapshot.inventory.length}</small>
+                )}
+                {(id === "quests" || id === "transformations") && (
+                  <span className="nav-coming-soon">EM BREVE</span>
+                )}
+              </button>
+            ))}
+            <button
+              className="nav-item nav-signout"
+              aria-label="Sair da conta"
               onClick={async () => {
                 await authClient.signOut();
                 router.push("/login");
                 router.refresh();
               }}
-              aria-label="Sair da conta"
             >
               <LogOut size={17} />
+              <span>Sair</span>
             </button>
-          </div>
-        </div>
-      </aside>
-      {mobileOpen && (
-        <button
-          className="sidebar-overlay"
-          aria-label="Fechar menu"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <div className="game-body">
-        <header className="game-header">
-          <div className="header-breadcrumb">
-            <button
-              className="icon-button mobile-menu"
-              aria-label="Abrir menu"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu size={22} />
-            </button>
-            <span>PLANETA TERRA</span>
-            <ChevronRight size={12} />
-            <strong>{currentSection.label}</strong>
-          </div>
-          <div className="header-right">
-            <span className="server-status">
-              <span className="status-dot" /> ONLINE
-            </span>
-            <span className="header-zeni">
-              <span>◈</span> {n(c.zeni)} <small>ZENI</small>
-            </span>
-            <span className="header-avatar">{c.name.slice(0, 1).toUpperCase()}</span>
-          </div>
+          </nav>
         </header>
         <div className="resource-strip">
           <div className="strip-character">
@@ -301,31 +285,19 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
             <small>POWER LEVEL</small>
           </span>
           <Meter compact label="HP" value={c.hp} max={stats.maxHp} />
-          <Meter compact label="Ki" value={c.ki} max={stats.maxKi} />
+          <Meter compact label="Ki" value={c.ki} max={stats.maxKi} variant="ki" />
           <span className="strip-xp">
             {n(c.xp)} / {n(snapshot.xpRequired)} XP
           </span>
         </div>
-        <main className="game-main">
-          <div className="page-heading">
-            <div>
-              <span className="eyebrow">
-                {section === "character" ? "SEU PODER. SUA HISTÓRIA." : "SUPERE SEUS LIMITES"}
-              </span>
-              <h1>
-                {section === "character" ? (
-                  <>
-                    Olá, {c.name}
-                    <span className="orange">.</span>
-                  </>
-                ) : (
-                  currentSection.label
-                )}
-              </h1>
-              <p>
-                {section === "character"
-                  ? "Cada batalha é um passo além. Continue sua jornada."
-                  : section === "training"
+        <main id="game-content" className="game-main">
+          {section !== "character" && (
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow">SUPERE SEUS LIMITES</span>
+                <h1>{currentSection.label}</h1>
+                <p>
+                  {section === "training"
                     ? "O poder vem da dedicação. Concentre-se e evolua."
                     : section === "explore"
                       ? "Há um mundo inteiro esperando pelo seu próximo passo."
@@ -338,15 +310,16 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                             : section === "transformations"
                               ? "Novos poderes exigem mais do que um nível."
                               : "Novas histórias aguardam seu guerreiro."}
-              </p>
-            </div>
-            <span className="chapter-tag">
-              <DragonBall stars={1} />
-              <span>
-                CAPÍTULO 01<small>O INÍCIO DA JORNADA</small>
+                </p>
+              </div>
+              <span className="chapter-tag">
+                <DragonBall stars={1} />
+                <span>
+                  CAPÍTULO 01<small>O INÍCIO DA JORNADA</small>
+                </span>
               </span>
-            </span>
-          </div>
+            </div>
+          )}
           {notice && (
             <div
               className={`notice ${notice.error ? "error" : "success"}`}
@@ -411,6 +384,17 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
 
           {section === "character" && (
             <>
+              <GameLobby
+                snapshot={snapshot}
+                busy={busy}
+                onNavigate={go}
+                onTrain={() => act({ action: "training.start" })}
+                onRest={() => act({ action: "rest.start" })}
+              />
+              <div className="lobby-character-heading">
+                <h2>Olá, {c.name}.</h2>
+                <span>SEU GUERREIRO · {snapshot.race.name.toUpperCase()}</span>
+              </div>
               <div className="dashboard-top">
                 <section className="warrior-card">
                   <div className="warrior-background">
@@ -424,7 +408,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   </div>
                   <div className="warrior-identity">
                     <div className="warrior-avatar">
-                      <UserRound size={48} strokeWidth={1.4} />
+                      <RaceEmblem raceId={c.raceId} />
                     </div>
                     <div>
                       <span className="race-pill">{snapshot.race.name}</span>
@@ -454,31 +438,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   </div>
                 </section>
                 <div className="status-column">
-                  <div className="dashboard-stats">
-                    <section className="stat-tile">
-                      <span className="stat-icon orange-icon">
-                        <Zap size={21} />
-                      </span>
-                      <span>
-                        Power Level<strong>{n(stats.powerLevel)}</strong>
-                        <small>Calculado pelos seus atributos</small>
-                      </span>
-                    </section>
-                    <section className="stat-tile">
-                      <span className="stat-icon gold-icon">◈</span>
-                      <span>
-                        Carteira Zeni<strong>{n(c.zeni)}</strong>
-                        <small>Seu próximo aprendizado começa aqui</small>
-                      </span>
-                    </section>
-                  </div>
                   <section className="panel vital-panel">
                     <div className="section-title">
                       <h3>Pronto para a próxima batalha?</h3>
                       <span className="badge">RECURSOS</span>
                     </div>
                     <Meter label="Vida / HP" value={c.hp} max={stats.maxHp} />
-                    <Meter label="Energia / Ki" value={c.ki} max={stats.maxKi} />
+                    <Meter label="Energia / Ki" value={c.ki} max={stats.maxKi} variant="ki" />
                     <div className="vital-bottom">
                       <span>
                         <Clock3 size={13} /> Descanso: {restRule?.durationSeconds}s
@@ -556,42 +522,6 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     })}
                   </div>
                 </section>
-              </div>
-              <div className="section-title journey-title">
-                <h2>Seu próximo passo</h2>
-                <span>CONTINUE FICANDO MAIS FORTE</span>
-              </div>
-              <div className="quick-actions">
-                <button className="quick-card training-quick" onClick={() => go("training")}>
-                  <span className="quick-icon">
-                    <Dumbbell size={25} />
-                  </span>
-                  <span>
-                    <strong>Treinar</strong>
-                    <small>+{trainingRule?.xpReward} XP a cada sessão</small>
-                  </span>
-                  <ArrowRight size={18} />
-                </button>
-                <button className="quick-card explore-quick" onClick={() => go("explore")}>
-                  <span className="quick-icon">
-                    <Compass size={25} />
-                  </span>
-                  <span>
-                    <strong>Explorar a Terra</strong>
-                    <small>Inimigos, Zeni e novos equipamentos</small>
-                  </span>
-                  <ArrowRight size={18} />
-                </button>
-                <button className="quick-card technique-quick" onClick={() => go("techniques")}>
-                  <span className="quick-icon">
-                    <Zap size={25} />
-                  </span>
-                  <span>
-                    <strong>Aprender técnicas</strong>
-                    <small>Transforme seu Ki em poder</small>
-                  </span>
-                  <ArrowRight size={18} />
-                </button>
               </div>
               <div className="dashboard-bottom">
                 <section className="panel history-panel">
@@ -702,7 +632,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   </p>
                   <div className="recovery-meters">
                     <Meter label="HP" value={c.hp} max={stats.maxHp} />
-                    <Meter label="Ki" value={c.ki} max={stats.maxKi} />
+                    <Meter label="Ki" value={c.ki} max={stats.maxKi} variant="ki" />
                   </div>
                   <button
                     className="button secondary"

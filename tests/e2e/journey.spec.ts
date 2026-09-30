@@ -52,6 +52,11 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
   await page.getByLabel("Nome do guerreiro").fill("Rafael");
   await page.getByRole("button", { name: /Começar minha jornada/ }).click();
   await expect(page.getByRole("heading", { name: "Olá, Rafael." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "ESCREVA A SUA LENDA." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir treinamento" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir explorar a terra" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir batalhar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir técnicas" })).toBeVisible();
   await page.screenshot({ path: ".local/screenshots/dashboard-desktop.png", fullPage: true });
   const [owner] = await database.db.select().from(s.user).where(eq(s.user.email, email));
   ownerId = owner.id;
@@ -78,8 +83,8 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
   state = await (await page.request.get("/api/game")).json();
   expect(state.snapshot.character.xp).toBe(25);
   expect(state.snapshot.character.zeni).toBe(60);
-  await go(page, "Treinamento");
-  await page.getByRole("button", { name: "Iniciar treinamento", exact: true }).click();
+  await go(page, "Personagem");
+  await page.getByRole("button", { name: "Treinar agora", exact: true }).click();
   await expect(page.getByText("Treinamento em andamento", { exact: true })).toBeVisible();
   state = await (await page.request.get("/api/game")).json();
   const early = await page.request.post("/api/game/actions", {
@@ -193,6 +198,20 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
     true,
   );
   await page.screenshot({ path: ".local/screenshots/explore-mobile.png", fullPage: true });
+  for (const width of [320, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    if (await page.getByRole("button", { name: "Abrir menu", exact: true }).isVisible())
+      await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
+    await page.getByRole("button", { name: "Personagem", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Treinar agora", exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await page.screenshot({ path: `.local/screenshots/lobby-${width}.png`, fullPage: true });
+    await page.getByRole("button", { name: "Abrir técnicas", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Técnicas", exact: true })).toBeVisible();
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Abrir menu" }).click();
   await page.getByRole("button", { name: "Sair da conta", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);

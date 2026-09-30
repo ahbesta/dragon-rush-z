@@ -117,7 +117,7 @@ O teste de navegador usa Chromium; instale-o com `npx playwright install chromiu
 
 1. Importe `ahbesta/dragon-rush-z` na Vercel, usando o preset **Next.js**, Node.js 24, `npm run build` e diretório raiz padrão.
 2. Configure `DATABASE_URL` com a credencial de runtime pooled do Neon.
-3. Configure um `BETTER_AUTH_SECRET` aleatório com pelo menos 32 caracteres e `BETTER_AUTH_URL` com a URL HTTPS estável do projeto, sem barra final.
+3. Configure um `BETTER_AUTH_SECRET` aleatório com pelo menos 32 caracteres e `BETTER_AUTH_URL` com a URL HTTPS estável do projeto, sem barra final. Cole os valores sem aspas ou crases; para o portal atual, a URL é `https://dragon-rush-z.vercel.app`. Salve as variáveis para Production e faça um novo deploy para aplicá-las.
 4. Aplique migrations e seed explicitamente no banco de destino antes de liberar o jogo. Não são executados no build nem durante requisições.
 5. Faça o deploy e verifique cadastro, login, criação e treinamento na URL definitiva.
 
@@ -126,3 +126,9 @@ Não use prefixo `NEXT_PUBLIC_` para segredos. `.env.local`, dados locais e rela
 Use branch/banco separado do Neon para desenvolvimento e previews. Cada ambiente deve ter sua URL de autenticação configurada; origens não são liberadas por wildcard. Ao criar tabelas operacionais novas, inclua os grants de runtime na migration. O workflow de CI verifica formatação, lint, tipos, testes locais e build sem credenciais externas.
 
 O projeto não inclui PvP, chat, guildas, comércio, rankings, monetização ou multiplayer em tempo real.
+
+## Interface e arte
+
+A tela inicial prioriza jogar: treinamento direto, exploração, batalha e técnicas em cards ilustrados. O menu superior e o painel de HP/Ki acompanham as telas; no celular, o menu pode ser aberto pelo botão no cabeçalho. A ficha, os equipamentos e o histórico ficam abaixo das ações principais.
+
+A arte está incluída no projeto. O prompt, a origem e a organização dos assets estão em [docs/visual-assets.md](docs/visual-assets.md).
