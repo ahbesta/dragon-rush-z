@@ -488,14 +488,6 @@ h3 {
     0 0 35px #ff951f26,
     0 18px 30px #0009;
 }
-.lobby-world-label {
-  position: absolute;
-  right: 45px;
-  bottom: 19px;
-  font-size: 7px;
-  color: #aac0df;
-  letter-spacing: 2px;
-}
 .lobby-menu-heading {
   display: flex;
   align-items: center;
@@ -547,9 +539,6 @@ h3 {
   position: absolute;
   inset: 0;
   z-index: -2;
-  background-image: url("/images/dragon-ball-menu.webp");
-  background-size: 400% auto;
-  background-position-y: 16%;
   transition: transform 0.25s;
 }
 .lobby-tile:after {
@@ -1508,9 +1497,6 @@ input:focus {
   }
   .lobby-player-summary strong {
     font-size: 26px;
-  }
-  .lobby-world-label {
-    display: none;
   }
   .lobby-menu-heading {
     margin-top: 23px;

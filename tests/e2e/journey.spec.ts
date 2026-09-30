@@ -80,6 +80,7 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
     .getByRole("button", { name: "Batalhar", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "Vitória!", exact: true })).toBeVisible();
+  await expect(page.locator(".battle-adversary img")).toBeVisible();
   state = await (await page.request.get("/api/game")).json();
   expect(state.snapshot.character.xp).toBe(25);
   expect(state.snapshot.character.zeni).toBe(60);

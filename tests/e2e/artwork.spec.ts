@@ -41,11 +41,11 @@ async function loadedImages(page: Page, selector: string, count: number) {
   }
 }
 
-test("artes carregam e permanecem inteiras no login, hero, inventário e transformações", async ({
+test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao menu", async ({
   page,
   baseURL,
 }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await mkdir(".local/screenshots", { recursive: true });
@@ -80,6 +80,11 @@ test("artes carregam e permanecem inteiras no login, hero, inventário e transfo
     data: { email, password: randomUUID() + "Test!", name: "Arte Teste" },
   });
   expect(signup.ok()).toBe(true);
+  await page.goto("/jogo");
+  await loadedImages(page, ".race-portrait img", 5);
+  await page.screenshot({ path: ".local/screenshots/art-races-1440.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.screenshot({ path: ".local/screenshots/art-races-390.png", fullPage: true });
   const created = await page.request.post("/api/game/characters", {
     headers: { origin: baseURL! },
     data: { name: "Guerreiro Arte", raceId: "saiyajin", idempotencyKey: randomUUID() },
@@ -108,34 +113,55 @@ test("artes carregam e permanecem inteiras no login, hero, inventário e transfo
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await go(page, "Personagem");
-    await expect(page.locator(".hero-fighter-names")).toContainText("PICCOLO");
+    await expect(page.locator(".hero-fighter-names, .lobby-world-label")).toHaveCount(0);
+    await expect(page.locator(".hero-fighter")).toHaveCount(3);
     expect(
-      await page.locator(".hero-fighter-names").evaluate((container) => {
-        const hero = container.closest(".lobby-hero")!.getBoundingClientRect();
-        const buttons = Array.from(container.closest(".lobby-hero")!.querySelectorAll("button"));
-        const labels = Array.from(container.children);
-        return labels.every((label, index) => {
-          const rect = label.getBoundingClientRect();
-          return (
-            rect.left >= hero.left &&
-            rect.right <= hero.right &&
-            rect.bottom <= hero.bottom &&
-            label.scrollWidth <= label.clientWidth &&
-            buttons.every((button) => {
-              const bounds = button.getBoundingClientRect();
-              return (
-                rect.right <= bounds.left ||
-                rect.left >= bounds.right ||
-                rect.bottom <= bounds.top ||
-                rect.top >= bounds.bottom
-              );
-            }) &&
-            (!index || labels[index - 1].getBoundingClientRect().right <= rect.left)
-          );
-        });
-      }),
-    ).toBe(true);
+      await page.evaluate(() =>
+        Array.from(document.querySelectorAll("*"))
+          .filter((element) => getComputedStyle(element).backgroundImage.includes("terra-shenron"))
+          .map((element) => element.className),
+      ),
+    ).toEqual(["game-header"]);
+    await loadedImages(page, ".lobby-tile-art img", 4);
+    await loadedImages(page, ".boss-teaser-art img", 1);
     await page.screenshot({ path: `.local/screenshots/art-home-${width}.png`, fullPage: true });
+
+    await go(page, "Treinamento");
+    await loadedImages(page, ".activity-art img", 2);
+    await expect(
+      page.getByRole("button", { name: "Iniciar treinamento", exact: true }),
+    ).toBeEnabled();
+    await page.screenshot({ path: `.local/screenshots/art-training-${width}.png`, fullPage: true });
+
+    await go(page, "Explorar");
+    await loadedImages(page, ".illustrated-scene img", 4);
+    for (const [area, enemies] of [
+      ["Floresta", 2],
+      ["Montanhas", 1],
+      ["Deserto", 1],
+      ["Região da Red Ribbon", 1],
+    ] as const) {
+      await page
+        .locator(".area-card")
+        .filter({ has: page.getByRole("heading", { name: area, exact: true }) })
+        .click();
+      await loadedImages(page, ".enemy-row .enemy-portrait img", enemies);
+    }
+    await page.screenshot({ path: `.local/screenshots/art-explore-${width}.png`, fullPage: true });
+
+    await go(page, "Batalhar");
+    await loadedImages(page, ".boss-arena-art img", 1);
+    await page.screenshot({ path: `.local/screenshots/art-battle-${width}.png`, fullPage: true });
+
+    await go(page, "Técnicas");
+    await loadedImages(page, ".technique-art img", 6);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({
+      path: `.local/screenshots/art-techniques-${width}.png`,
+      fullPage: true,
+    });
 
     await go(page, "Inventário");
     await loadedImages(page, ".inventory-card .item-showcase img", 6);

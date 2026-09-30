@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, LogOut, Shield, Swords, Wind, Heart, LoaderCircle } from "lucide-react";
+import { ArrowRight, Check, LogOut, Shield, LoaderCircle } from "lucide-react";
 import type { RaceDefinition } from "@/game/types";
 import { authClient } from "@/lib/auth-client";
 import { Brand } from "./brand";
+import { raceArtwork } from "@/lib/game-art";
+import { ArtworkImage } from "./artwork-image";
 const labels = {
   strength: "Força",
   defense: "Defesa",
@@ -82,31 +84,34 @@ export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
             <span>05 ORIGENS DISPONÍVEIS</span>
           </div>
           <div className="race-grid">
-            {races.map((r, index) => (
-              <button
-                type="button"
-                key={r.id}
-                onClick={() => setRaceId(r.id)}
-                className={`race-card ${raceId === r.id ? "selected" : ""}`}
-                style={{ "--race-color": r.color } as React.CSSProperties}
-              >
-                <span className="race-index">0{index + 1}</span>
-                <span className="race-emblem">
-                  {
-                    [
-                      <Swords key="s" />,
-                      <Wind key="w" />,
-                      <Shield key="d" />,
-                      <Heart key="h" />,
-                      <Swords key="f" />,
-                    ][index]
-                  }
-                </span>
-                <h3>{r.name}</h3>
-                <small>{r.trait}</small>
-                <span className="race-check">{raceId === r.id && <Check size={16} />}</span>
-              </button>
-            ))}
+            {races.map((r, index) => {
+              const art = raceArtwork[r.id];
+              return (
+                <button
+                  type="button"
+                  key={r.id}
+                  onClick={() => setRaceId(r.id)}
+                  className={`race-card ${raceId === r.id ? "selected" : ""}`}
+                  style={{ "--race-color": r.color } as React.CSSProperties}
+                >
+                  <span className="race-index">0{index + 1}</span>
+                  <span className={art ? "race-portrait" : "race-emblem"}>
+                    {art ? (
+                      <ArtworkImage
+                        art={art}
+                        sizes="(max-width: 700px) 40vw, 20vw"
+                        fallback={<Shield size={28} />}
+                      />
+                    ) : (
+                      <Shield size={28} />
+                    )}
+                  </span>
+                  <h3>{r.name}</h3>
+                  <small>{r.trait}</small>
+                  <span className="race-check">{raceId === r.id && <Check size={16} />}</span>
+                </button>
+              );
+            })}
           </div>
           {race && (
             <div className="race-details">

@@ -1,6 +1,6 @@
 import { Shield, Swords, Wind, Heart, Zap, Package, CircleDot } from "lucide-react";
 import type { Attributes, ItemDefinition } from "@/game/types";
-import { itemArtwork } from "@/lib/game-art";
+import { itemArtwork, areaArtwork } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
 export const attributeLabels: Record<keyof Attributes, string> = {
   strength: "Força",
@@ -96,6 +96,14 @@ export function ItemEffects({ item }: { item: ItemDefinition }) {
   );
 }
 export function Scene({ kind }: { kind: string }) {
+  const art = areaArtwork[kind];
+  if (art)
+    return (
+      <div className={`scene scene-${kind} illustrated-scene`} aria-hidden="true">
+        <ArtworkImage art={art} sizes="(max-width: 700px) 45vw, 25vw" />
+        {kind === "red-ribbon" && <span className="scene-base">RR</span>}
+      </div>
+    );
   return (
     <div className={`scene scene-${kind}`} aria-hidden="true">
       <span className="scene-sun" />

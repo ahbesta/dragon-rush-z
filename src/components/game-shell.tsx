@@ -44,8 +44,9 @@ import {
 } from "./game-primitives";
 import { BattleLog } from "./battle-log";
 import { GameLobby } from "./game-lobby";
-import { transformationArtwork } from "@/lib/game-art";
+import { transformationArtwork, destinationArtwork, techniqueArtwork } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
+import { EnemyPortrait } from "./enemy-portrait";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -565,7 +566,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 </section>
                 {boss && (
                   <section className="boss-teaser">
-                    <span className="boss-mark">魔</span>
+                    <EnemyPortrait enemyId={boss.id} className="boss-teaser-art" sizes="200px" />
                     <span className="eyebrow">UM DESAFIO À ALTURA</span>
                     <h2>
                       O Rei Demônio
@@ -593,9 +594,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           {section === "training" && (
             <div className="training-grid">
               <section className="panel training-card">
-                <span className="training-symbol">
-                  <Dumbbell size={52} strokeWidth={1.3} />
-                </span>
+                <div className="activity-art training-art">
+                  <ArtworkImage
+                    art={destinationArtwork.training}
+                    sizes="(max-width: 900px) 90vw, 55vw"
+                    fallback={<Dumbbell size={52} />}
+                  />
+                </div>
                 <span className="eyebrow orange">DISCIPLINA. FOCO. EVOLUÇÃO.</span>
                 <h2>Treinamento de combate</h2>
                 <p>
@@ -627,7 +632,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               </section>
               <div>
                 <section className="panel recovery-card">
-                  <Heart size={30} />
+                  <div className="activity-art recovery-art">
+                    <ArtworkImage
+                      art={destinationArtwork.rest}
+                      sizes="(max-width: 900px) 90vw, 40vw"
+                      fallback={<Heart size={30} />}
+                    />
+                  </div>
                   <h3>Recupere suas forças</h3>
                   <p>
                     Descansar restaura completamente seu HP e Ki. Prepare-se para voltar à batalha.
@@ -723,9 +734,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                         const enemy = catalog.enemies.find((e) => e.id === encounter.enemyId)!;
                         return (
                           <div className="enemy-row" key={enemy.id}>
-                            <span className="enemy-icon">
-                              <Swords size={25} />
-                            </span>
+                            <EnemyPortrait enemyId={enemy.id} />
                             <div className="enemy-info">
                               <strong>{enemy.name}</strong>
                               <small>
@@ -760,7 +769,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               )}
               {section === "battle" && boss && (
                 <section className="boss-arena">
-                  <span className="boss-arena-mark">魔</span>
+                  <EnemyPortrait
+                    enemyId={boss.id}
+                    className="boss-arena-art"
+                    sizes="(max-width: 700px) 100px, 220px"
+                  />
                   <div>
                     <span className="eyebrow">BOSS • PRIMEIRO GRANDE DESAFIO</span>
                     <h2>{boss.name}</h2>
@@ -913,11 +926,21 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     (m) => m.id === technique.requirements.masterId,
                   );
                   const selected = c.selectedTechniques.includes(technique.id);
+                  const art = techniqueArtwork[technique.id];
                   return (
                     <section
                       className={`panel technique-card ${learned ? "learned" : ""}`}
                       key={technique.id}
                     >
+                      {art && (
+                        <div className="technique-art">
+                          <ArtworkImage
+                            art={art}
+                            sizes="(max-width: 700px) 90vw, 35vw"
+                            fallback={<Zap size={40} />}
+                          />
+                        </div>
+                      )}
                       <div className="technique-top">
                         <span className={`technique-icon ${technique.kind}`}>
                           <Zap size={27} />

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Check, ChevronDown, ChevronUp, Swords, Trophy, X, Zap } from "lucide-react";
 import type { BattleResult, GameSnapshot } from "@/game/types";
 import { formatNumber } from "./game-primitives";
+import { EnemyPortrait } from "./enemy-portrait";
 export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot: GameSnapshot }) {
   const [expanded, setExpanded] = useState(false);
   const enemy = snapshot.catalog.enemies.find((e) => e.id === battle.enemyId);
@@ -28,7 +29,10 @@ export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot
       <div className="battle-versus">
         <span>{names.player}</span>
         <small>VS</small>
-        <span>{names.enemy}</span>
+        <span className="battle-adversary">
+          <EnemyPortrait enemyId={battle.enemyId} sizes="100px" />
+          {names.enemy}
+        </span>
       </div>
       {victory && (
         <div className="battle-rewards">

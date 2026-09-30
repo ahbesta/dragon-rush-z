@@ -3,6 +3,8 @@
 import { ArrowRight, Compass, Dumbbell, Heart, Swords, Zap } from "lucide-react";
 import type { GameSnapshot } from "@/game/types";
 import { formatNumber } from "./game-primitives";
+import { destinationArtwork } from "@/lib/game-art";
+import { ArtworkImage } from "./artwork-image";
 
 type Destination = "training" | "explore" | "battle" | "techniques";
 type Props = {
@@ -18,24 +20,30 @@ const destinations = [
     id: "training",
     title: "Treinamento",
     subtitle: "Fique mais forte",
-    guide: "GOKU",
+    guide: "SUPERE SEUS LIMITES",
     icon: Dumbbell,
   },
   {
     id: "explore",
     title: "Explorar a Terra",
     subtitle: "Encontre seu próximo desafio",
-    guide: "BULMA",
+    guide: "DESCUBRA A TERRA",
     icon: Compass,
   },
   {
     id: "battle",
     title: "Batalhar",
     subtitle: "Conquiste XP, Zeni e itens",
-    guide: "VEGETA",
+    guide: "ENTRE EM COMBATE",
     icon: Swords,
   },
-  { id: "techniques", title: "Técnicas", subtitle: "Domine o seu Ki", guide: "PICCOLO", icon: Zap },
+  {
+    id: "techniques",
+    title: "Técnicas",
+    subtitle: "Domine o seu Ki",
+    guide: "CONTROLE SEU KI",
+    icon: Zap,
+  },
 ] as const;
 
 export function GameLobby({ snapshot, busy, onNavigate, onTrain, onRest }: Props) {
@@ -49,11 +57,6 @@ export function GameLobby({ snapshot, busy, onNavigate, onTrain, onRest }: Props
           <span className="hero-fighter fighter-vegeta" />
           <span className="hero-fighter fighter-piccolo" />
           <span className="hero-fighter fighter-goku" />
-        </div>
-        <div className="hero-fighter-names" aria-hidden="true">
-          <span>VEGETA</span>
-          <span>GOKU</span>
-          <span>PICCOLO</span>
         </div>
         <div className="lobby-hero-copy">
           <span className="lobby-chapter">
@@ -97,25 +100,26 @@ export function GameLobby({ snapshot, busy, onNavigate, onTrain, onRest }: Props
             </span>
           </div>
         </div>
-        <span className="lobby-world-label">SUA JORNADA COMEÇA NA TERRA</span>
       </div>
       <div className="lobby-menu-heading">
         <h2>O que vamos fazer hoje?</h2>
         <span>ESCOLHA SEU PRÓXIMO PASSO</span>
       </div>
       <div className="lobby-menu">
-        {destinations.map(({ id, title, subtitle, guide, icon: Icon }, index) => (
+        {destinations.map(({ id, title, subtitle, guide, icon: Icon }) => (
           <button
             key={id}
             className={`lobby-tile lobby-tile-${id}`}
             aria-label={`Abrir ${title.toLowerCase()}`}
             onClick={() => onNavigate(id)}
           >
-            <span
-              className="lobby-tile-art"
-              style={{ backgroundPositionX: `${index * (100 / 3)}%` }}
-              aria-hidden="true"
-            />
+            <span className="lobby-tile-art" aria-hidden="true">
+              <ArtworkImage
+                art={destinationArtwork[id]}
+                sizes="(max-width: 700px) 45vw, 25vw"
+                fallback={<Icon size={42} />}
+              />
+            </span>
             <span className="lobby-guide">
               <Icon size={13} /> {guide}
             </span>
