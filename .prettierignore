@@ -1,0 +1,12 @@
+node_modules
+.next
+.local
+.git
+.vercel
+.env*
+coverage
+playwright-report
+test-results
+package-lock.json
+drizzle/meta
+next-env.d.ts
