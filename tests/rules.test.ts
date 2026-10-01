@@ -5,7 +5,7 @@ import { xpRequired, applyExperience } from "@/game/progression";
 import { unmetRequirements } from "@/game/requirements";
 import { calculateDamage, simulateBattle, type CombatInput } from "@/game/combat";
 import { characterInput, actionInput } from "@/game/validation";
-import { seedCatalog as c } from "@/server/db/seed-data";
+import { legacyCatalog as c } from "@/server/db/legacy-catalog";
 const race = c.races[0];
 function battle(overrides: Partial<CombatInput> = {}) {
   return simulateBattle({

@@ -15,6 +15,13 @@
       "when": 1790807317967,
       "tag": "0001_abandoned_mysterio",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790872262091,
+      "tag": "0002_powerful_spencer_smythe",
+      "breakpoints": true
     }
   ]
 }

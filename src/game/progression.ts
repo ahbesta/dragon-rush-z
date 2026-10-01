@@ -18,7 +18,7 @@ export function applyExperience(
     remaining -= xpRequired(nextLevel);
     nextLevel++;
     for (const key of Object.keys(attributes) as (keyof Attributes)[])
-      attributes[key] += race.growth[key];
+      attributes[key] = (attributes[key] ?? 0) + (race.growth[key] ?? 0);
   }
   return { level: nextLevel, xp: remaining, base: attributes };
 }

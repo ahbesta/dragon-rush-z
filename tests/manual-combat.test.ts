@@ -10,7 +10,7 @@ import {
 } from "@/game/combat";
 import { deriveStats } from "@/game/attributes";
 import { actionInput } from "@/game/validation";
-import { seedCatalog as c } from "@/server/db/seed-data";
+import { legacyCatalog as c } from "@/server/db/legacy-catalog";
 const punch = c.techniques.find((t) => t.id === "soco")!;
 const kick = c.techniques.find((t) => t.id === "chute")!;
 const blast = c.techniques.find((t) => t.id === "rajada-ki")!;

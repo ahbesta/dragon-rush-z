@@ -18,6 +18,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:upgrade": "tsx scripts/upgrade-characters.ts",
+    "balance:report": "tsx scripts/balance-report.ts",
     "db:local": "tsx scripts/local-db.ts",
     "db:check": "tsx scripts/check-db.ts",
     "db:roles": "tsx scripts/setup-role.ts",

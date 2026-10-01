@@ -15,7 +15,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
         database.db,
         owner,
         { ...action, idempotencyKey: randomUUID() },
-        { random: () => 0 },
+        { random: () => 0.1 },
       );
     await run({ action: "combat.mode", mode: "manual" });
     await run({ action: "battle", areaId: "floresta", enemyId: "bandido" });
@@ -37,7 +37,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
         database.db,
         owner,
         { ...action, idempotencyKey: randomUUID() },
-        { random: () => 0 },
+        { random: () => 0.1 },
       );
     await run({ action: "combat.mode", mode: "manual" });
     await run({ action: "battle", areaId: "floresta", enemyId: "bandido" });
@@ -45,7 +45,6 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
     for (const [round, techniqueId] of [
       [1, "chute"],
       [2, "soco"],
-      [3, "chute"],
     ] as const)
       await run({ action: "battle.turn", battleId: before.activeBattle!.id, round, techniqueId });
     await Promise.allSettled([
@@ -53,14 +52,14 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
       run({
         action: "battle.turn",
         battleId: before.activeBattle!.id,
-        round: 4,
-        techniqueId: "soco",
+        round: 3,
+        techniqueId: "chute",
       }),
     ]);
     const after = (await readSnapshot(database.db, owner))!;
-    expect(after.character).toMatchObject({ xp: 40, zeni: 70 });
+    expect(after.character).toMatchObject({ xp: 36, zeni: 66 });
     expect(after.activeBattle).toBeNull();
-    expect(after.inventory.find((i) => i.itemId === "bastao")?.quantity).toBe(1);
+    expect(after.inventory.find((i) => i.itemId === "tecido")?.quantity).toBe(1);
     expect(
       await database.db
         .select()
@@ -108,14 +107,20 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
     };
     const results = await Promise.all(
       Array.from({ length: 4 }, () =>
-        executeAction(database.db, owner, input, { random: () => 0 }),
+        executeAction(database.db, owner, input, { random: () => 0.1 }),
       ),
     );
     expect(new Set(results.map((r) => r.battle!.id)).size).toBe(1);
     const snap = (await readSnapshot(database.db, owner))!;
-    expect(snap.character.xp).toBe(25);
-    expect(snap.character.zeni).toBe(60);
-    expect(snap.inventory).toEqual([{ itemId: "pocao-hp", quantity: 1 }]);
+    expect(snap.character.xp).toBe(28);
+    expect(snap.character.zeni).toBe(63);
+    expect(snap.inventory).toEqual(
+      expect.arrayContaining([
+        { itemId: "pocao-hp", quantity: 3 },
+        { itemId: "erva", quantity: 1 },
+        { itemId: "fruto-ki", quantity: 1 },
+      ]),
+    );
   });
   it("chaves diferentes não burlam cooldown sob conexões concorrentes", async () => {
     const results = await Promise.allSettled(
@@ -124,7 +129,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
           database.db,
           owner,
           { action: "battle", areaId: "floresta", enemyId: "lobo", idempotencyKey: randomUUID() },
-          { random: () => 0 },
+          { random: () => 0.1 },
         ),
       ),
     );
@@ -156,6 +161,6 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
       idempotencyKey: randomUUID(),
     };
     await Promise.all(Array.from({ length: 4 }, () => executeAction(database.db, owner, input)));
-    expect((await readSnapshot(database.db, owner))!.character.xp).toBe(50);
+    expect((await readSnapshot(database.db, owner))!.character.xp).toBe(10);
   });
 });

@@ -15,7 +15,10 @@ try {
       throw new Error(
         "A role já existe. Configure DATABASE_URL com as credenciais dela; nenhuma senha foi alterada.",
       );
-    console.log("Role de runtime já configurada. Nenhuma credencial alterada.");
+    await client.query(
+      `GRANT SELECT ON chapters, quests, settlements, shop_offers, recipes TO ${role}`,
+    );
+    console.log("Permissões de leitura do catálogo atualizadas. Nenhuma credencial alterada.");
   } else {
     const password = randomBytes(32).toString("hex");
     await client.query("BEGIN");

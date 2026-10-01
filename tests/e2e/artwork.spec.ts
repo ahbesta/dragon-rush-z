@@ -104,7 +104,8 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
         "armadura-simples",
         "armadura-saiyajin",
       ].map((itemId) => ({ characterId: character.id, itemId, quantity: 1 })),
-    );
+    )
+    .onConflictDoNothing();
   await page.goto("/jogo");
   await expect(page.getByRole("heading", { name: "Olá, Guerreiro Arte." })).toBeVisible();
   const background = await page.request.get("/images/world/terra-shenron.webp");
@@ -134,12 +135,12 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
     await page.screenshot({ path: `.local/screenshots/art-training-${width}.png`, fullPage: true });
 
     await go(page, "Explorar");
-    await loadedImages(page, ".illustrated-scene img", 4);
+    await loadedImages(page, ".area-card .illustrated-scene img", 16);
     for (const [area, enemies] of [
-      ["Floresta", 2],
-      ["Montanhas", 1],
-      ["Deserto", 1],
-      ["Região da Red Ribbon", 1],
+      ["Floresta do Monte Paozu", 2],
+      ["Montanhas do Monte Paozu", 1],
+      ["Deserto de Yamcha", 2],
+      ["QG Red Ribbon", 2],
     ] as const) {
       await page
         .locator(".area-card")
@@ -154,7 +155,7 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
     await page.screenshot({ path: `.local/screenshots/art-battle-${width}.png`, fullPage: true });
 
     await go(page, "Técnicas");
-    await loadedImages(page, ".technique-art img", 6);
+    await loadedImages(page, ".technique-art img", 12);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );

@@ -2,7 +2,8 @@ import { Compass, Dumbbell, Heart, Package, Store, Swords, UserRound } from "luc
 
 export type MapDestination =
   "training" | "rest" | "explore" | "battle" | "market" | "inventory" | "character";
-export type MapNavigation = "training" | "explore" | "battle" | "techniques" | "inventory";
+export type MapNavigation =
+  "training" | "explore" | "battle" | "techniques" | "inventory" | "settlements";
 export type MapPoint = { x: number; y: number };
 export const mapCrossroads: MapPoint = { x: 51, y: 52 };
 
@@ -55,7 +56,7 @@ export const mapDestinations = [
   {
     id: "market",
     title: "Mercado",
-    subtitle: "Compre técnicas",
+    subtitle: "Vilas e suprimentos",
     label: { x: 68, y: 56 },
     path: [
       { x: 56, y: 59 },

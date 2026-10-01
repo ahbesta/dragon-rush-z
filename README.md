@@ -19,6 +19,7 @@ npm.cmd run db:check
 npm.cmd run db:migrate
 npm.cmd run db:seed
 npm.cmd run db:roles
+npm.cmd run db:upgrade
 npm.cmd run dev
 ```
 
@@ -40,18 +41,22 @@ Em outro terminal, execute migrations, seed e `dev`. PGlite persiste em `.local/
 ## O que está jogável
 
 - Cadastro, login, logout, sessão de sete dias e páginas protegidas.
-- Um personagem por conta; cinco raças, com origem permanente e crescimento próprio.
+- Um personagem por conta; cinco raças, atributos distribuídos manualmente e afinidades raciais.
 - Dashboard, atributos, HP, Ki, XP, nível, Power Level, Zeni e atividades recentes.
-- Treinamento: 30 segundos e 50 XP; descanso gratuito: 30 segundos e recuperação completa.
-- Terra: Floresta (nível 1), Montanhas (2), Deserto (3) e Região da Red Ribbon (4).
-- Combates automáticos ou manuais contra Lobo, Bandido, Dinossauro, Saibaman e Soldado da Red Ribbon.
-- Drops, consumíveis, equipamentos e bônus de atributos.
+- Treinamento: 30 segundos e 10 XP; descanso gratuito: 30 segundos e recuperação completa.
+- Campanha clássica em seis capítulos, 16 áreas e missões encadeadas: Paozu/Pilaf, Escola Kame/21º torneio, Jingle/Muscle Tower, Blue/Karin/Red Ribbon, 22º torneio e Piccolo Daimao.
+- Farm automático ou manual; bosses e provas de mestres exigem combate manual. Adversários mostram a intenção e a iniciativa antes de cada rodada.
+- Defesa, concentração de Ki, veneno, paralisia, quebra de defesa, interrupção e consumíveis durante a luta.
+- Equipamentos em quatro slots, atributos secundários, materiais, fabricação, venda e troca de troféus em cinco vilas.
+- Bolsas de três tipos de consumível; automático só usa poções se autorizado pelo jogador.
 - Soco e Chute iniciais; Rajada de Ki aprendida no nível 2 por 30 Zeni.
-- Piccolo Daimao: nível 6, vitória contra Soldado da Red Ribbon, duas fases e drops especiais.
-- Catálogos e requisitos de técnicas avançadas, mestres e transformações, ainda bloqueados.
-- Missões identificadas na interface como uma etapa futura.
+- Piccolo Daimao: nível 20, campanha anterior concluída, duas fases, equipamento especial e troféu garantido.
+- Kame e Karin são desbloqueados por provas; técnicas clássicas novas incluem Jan Ken, Rogafufuken, Taiyoken, Zanzoken, Dodonpa e Kikohou.
+- Revanche Heróica com dificuldade fixa, drops melhores e requisitos próprios.
+- Ranking autenticado por Power Level, com filtro de raça, posição pessoal e desempates por campanha e nível; não expõe emails.
+- Perfil e alteração de senha. Transformações mantêm a estrutura futura de requisitos.
 
-HP e Ki persistem entre encontros. Derrota não remove níveis ou itens. Descanso permite voltar ao combate. Treino e descanso continuam após fechar o navegador, mas exigem uma conclusão validada pelo servidor; não há treinamento recorrente automático.
+HP e Ki persistem entre encontros. Derrota custa 5% dos Zeni guardados, limitada a 100; consumíveis gastos permanecem gastos. Níveis, XP e equipamentos são preservados. Descanso permite voltar ao combate. Treino e descanso continuam após fechar o navegador, mas exigem uma conclusão validada pelo servidor; não há treinamento recorrente automático.
 
 ## Arquitetura
 
@@ -71,12 +76,15 @@ Os catálogos ficam no banco. O seed em `src/server/db/seed-data.ts` é a fonte 
 ### Regras centralizadas
 
 - XP necessária do nível `L`: `100 + 50 × (L − 1)`.
-- HP máximo: `80 + 10 × Resistência`.
-- Ki máximo: `40 + 5 × Resistência + 5 × (L − 1)`.
-- Power Level: `round(4F + 3D + 3V + 2R + 0,2 HPmax + 0,3 Kimax)`.
+- Orçamento total: `5 × L` pontos, incluindo cinco na criação. Subir de nível libera pontos; não distribui atributos automaticamente.
+- Atributo racial: base + `floor(pontos × afinidade)`; equipamento soma depois, sem multiplicar bônus pela afinidade.
+- HP máximo: `100 + 8 × Resistência`.
+- Ki máximo: `30 + 6 × Controle de Ki + L − 1`.
+- Power Level: `round(4F + 3D + 3V + 3R + 4K + 0,15 HPmax + 0,2 Kimax)`.
 - Atributos efetivos incluem equipamentos; trocar equipamento não cura o personagem.
 - XP excedente é preservada, inclusive quando uma recompensa concede múltiplos níveis.
-- Dano físico e de Ki, defesa, iniciativa, cooldowns em turnos e fases ficam em `src/game/combat.ts`.
+- Builds, economia e combate ficam em `src/game/builds.ts`, `economy.ts`, `attributes.ts` e `strategic-combat.ts`.
+- XP e Zeni de inimigos abaixo do jogador: diferença de 3 níveis → 50%, 4 → 25%, 5 ou mais → 10%. Drops permanecem iguais.
 
 O motor recebe uma fonte de aleatoriedade injetável para testes. Em execução real, o servidor usa `crypto.randomInt`. Batalhas terminam em derrota, vitória ou após 60 rodadas; empate e derrota não concedem recompensas.
 
@@ -86,7 +94,7 @@ O seletor **Modo de combate** aparece em todas as telas do personagem. A prefer�
 
 No **Manual**, exploração, adversários e bosses iniciam uma batalha persistente. Escolha uma das técnicas da sua prioridade de combate ou Soco a cada rodada. O servidor valida a técnica, Ki e recarga e resolve os dois lados conforme a iniciativa. Recarregar ou fechar a página não reinicia a batalha. Treinamento, descanso, itens e alterações de equipamento ficam bloqueados durante a luta.
 
-Você pode trocar o modo a qualquer momento, inclusive durante uma atividade. Ao escolher **Automático** com uma batalha manual em andamento, o mesmo motor resolve as rodadas restantes, preservando HP, Ki, recargas, fases e log. A recompensa só é concedida quando a batalha termina, em uma única transação.
+Você pode trocar a preferência a qualquer momento. Ao escolher **Automático** durante uma luta comum, o mesmo motor resolve as rodadas restantes, preservando recursos e consumíveis já usados. Bosses e provas continuam manuais mesmo se a preferência mudar. A recompensa só é concedida quando a batalha termina, em uma única transação.
 
 `characters.combat_mode` armazena a preferência; `active_battles` guarda o estado privado e serializável de uma única batalha por personagem. A API retorna somente a projeção necessária para exibir os recursos, técnicas e eventos. `combat.mode` aceita um modo; `battle.turn` aceita o ID da batalha, a rodada esperada e o ID da técnica. A rodada esperada e a chave de idempotência impedem que requisições simultâneas avancem o mesmo turno duas vezes.
 
@@ -98,8 +106,9 @@ Você pode trocar o modo a qualquer momento, inclusive durante uma atividade. Ao
 | `GET /api/game`             | Snapshot privado do personagem autenticado        |
 | `POST /api/game/characters` | Criação validada de personagem                    |
 | `POST /api/game/actions`    | Comando validado e executado em transação         |
+| `GET /api/game/ranking`     | Classificação autenticada por Power Level         |
 
-Comandos aceitam apenas seus identificadores e uma `idempotencyKey` UUID. Campos extras são rejeitados. Nenhum endpoint permite enviar atributos, XP, dano, recompensas, drops ou um `userId` arbitrário.
+Comandos aceitam identificadores, decisões permitidas e uma `idempotencyKey` UUID. A alocação aceita pontos inteiros dentro do orçamento disponível; o servidor calcula os atributos. Campos extras são rejeitados. Nenhum endpoint permite definir XP, dano, recompensas, drops ou um `userId` arbitrário.
 
 Cada comando bloqueia a linha do personagem. O relógio do banco valida prazos. Alterações de recursos, inventário, histórico, batalha e comprovante da ação são atômicas. Repetir uma chave retorna o resultado original; reutilizá-la em outro comando é rejeitado. O frontend preserva a chave quando a conexão ou o servidor falha.
 
@@ -116,12 +125,15 @@ npm.cmd run typecheck
 npm.cmd test
 npm.cmd run test:neon
 npm.cmd run test:e2e
+npm.cmd run balance:report
 npm.cmd run build
 ```
 
 `npm test` usa um PostgreSQL embarcado descartável, aplica migrations, testa seed repetível, regras, concorrência, restrições e rollback. Os testes Neon são habilitados somente por `test:neon`, que cria e remove usuários isolados de teste no banco configurado.
 
-O teste de navegador usa Chromium; instale-o com `npx playwright install chromium` se necessário. Ele verifica cadastro até boss, treinamento real de 30 segundos, sessão persistente, segurança da API e layout mobile. A preparação de nível 6 usa uma fixture administrativa para evitar dezenas de combates; nível 2 e aprendizado são obtidos pelo fluxo real. A conta de teste é removida ao final. Capturas ficam em `.local/screenshots`.
+O teste de navegador usa Chromium; instale-o com `npx playwright install chromium` se necessário. Ele verifica cadastro, alocação, treinamento real de 30 segundos, missões, compras, equipamento, poções em boss manual, ranking, sessão e layout mobile. Fixtures isoladas preparam batalhas avançadas; a jornada inicial sobe ao nível 2 pelo fluxo real. Contas descartáveis são removidas ao final. Capturas ficam em `.local/screenshots`. O teste transacional percorre todos os capítulos, registrando vitórias pelo serviço; não mede o tempo necessário para subir de nível.
+
+O relatório `docs/balance-report.json` contém 14 mil combates reproduzíveis com cinco raças, builds e uma política de decisões explícita. Ele compara personagens preparados e sem suprimentos/equipamentos; não representa todas as builds possíveis. Consulte [as regras e decisões de balanceamento](docs/classic-expansion.md).
 
 Os testes de combate cobrem escolha de golpes, Ki insuficiente, recargas, retomada, conclusão manual, troca para automático, bosses e persistência da preferência após login. Para testar uma instância separada, configure `E2E_BASE_URL` e opcionalmente `E2E_SERVER_COMMAND` (por exemplo, `npm run start -- --port 3001`, após o build). `BETTER_AUTH_URL` deve corresponder à URL dessa instância.
 
@@ -135,17 +147,17 @@ Os testes de combate cobrem escolha de golpes, Ki insuficiente, recargas, retoma
 
 Não use prefixo `NEXT_PUBLIC_` para segredos. `.env.local`, dados locais e relatórios de testes são ignorados pelo Git. `DIRECT_DATABASE_URL` é administrativa e só é necessária onde migrations são executadas.
 
-A migration `0001_abandoned_mysterio.sql` adiciona os modos de combate, preserva os personagens e concede acesso à nova tabela à role de runtime existente. Aplique-a com `npm run db:migrate` usando a conexão administrativa antes de publicar esta versão.
+A migration `0002_powerful_spencer_smythe.sql` adiciona campanha, economia e builds sem remover personagens, e concede leitura dos novos catálogos à role de runtime. A atualização exige `db:migrate`, `db:seed`, `db:roles` e `db:upgrade` antes de publicar. `db:upgrade` preserva níveis, XP, inventário, equipamento e flags, converte o crescimento antigo em pontos distribuídos e libera a primeira redistribuição gratuita. Batalhas v1 em andamento são preservadas e terminam com suas regras serializadas; o personagem é convertido em seguida.
 
 Use branch/banco separado do Neon para desenvolvimento e previews. Cada ambiente deve ter sua URL de autenticação configurada; origens não são liberadas por wildcard. Ao criar tabelas operacionais novas, inclua os grants de runtime na migration. O workflow de CI verifica formatação, lint, tipos, testes locais e build sem credenciais externas.
 
-O projeto não inclui PvP, chat, guildas, comércio, rankings, monetização ou multiplayer em tempo real.
+O projeto não inclui PvP, chat, guildas, comércio entre jogadores, monetização ou multiplayer em tempo real.
 
 ## Interface e arte
 
 A tela inicial prioriza jogar: treinamento direto, exploração, batalha e técnicas em cards ilustrados. O menu superior e o painel de HP/Ki acompanham as telas; no celular, o menu pode ser aberto pelo botão no cabeçalho. A ficha, os equipamentos e o histórico ficam abaixo das ações principais.
 
-A arte está incluída no projeto. O prompt, a origem e a organização dos assets estão em [docs/visual-assets.md](docs/visual-assets.md).
+A arte está incluída no projeto. O prompt, a origem e a organização dos assets anteriores estão em [docs/visual-assets.md](docs/visual-assets.md); os novos cenários, inimigos, equipamentos e técnicas têm prompts em [docs/classic-art-prompts.json](docs/classic-art-prompts.json). Os recortes passaram por revisão visual e correções de anatomia, identidade e enquadramento.
 
 ## Arena 2D
 

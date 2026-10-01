@@ -1,5 +1,13 @@
-export type Attributes = { strength: number; defense: number; speed: number; endurance: number };
-export type Slot = "weapon" | "armor" | "accessory";
+export type Attributes = {
+  strength: number;
+  defense: number;
+  speed: number;
+  endurance: number;
+  kiControl?: number;
+};
+export type AttributeKey = keyof Attributes;
+export type Allocation = Required<Attributes>;
+export type Slot = "weapon" | "armor" | "boots" | "accessory";
 export type Rarity = "common" | "uncommon" | "rare" | "epic";
 export type Requirements = {
   minLevel?: number;
@@ -12,10 +20,21 @@ export type ItemEffects = {
   attributes?: Partial<Attributes>;
   restoreHp?: number;
   restoreKi?: number;
+  cure?: StatusKind[];
+  kiDamageBuff?: number;
+  outsideOnly?: boolean;
+  critical?: number;
+  evasion?: number;
+  physicalResistance?: number;
+  statusResistance?: number;
+  guardBreak?: number;
 };
 export type TechniqueEffect =
   | { kind: "heal"; fraction: number }
-  | { kind: "buff"; attribute: keyof Attributes; amount: number; turns: number };
+  | { kind: "buff"; attribute: keyof Attributes; amount: number; turns: number }
+  | { kind: "status"; status: StatusKind; turns: number }
+  | { kind: "interrupt" }
+  | { kind: "evasion"; amount: number; turns: number };
 export type RaceDefinition = {
   id: string;
   name: string;
@@ -24,6 +43,8 @@ export type RaceDefinition = {
   color: string;
   base: Attributes;
   growth: Attributes;
+  affinities?: Allocation;
+  kiBase?: number;
 };
 export type TechniqueDefinition = {
   id: string;
@@ -36,16 +57,19 @@ export type TechniqueDefinition = {
   requirements: Requirements;
   learnCost: number;
   effects: TechniqueEffect[];
+  hpCost?: number;
 };
 export type ItemDefinition = {
   id: string;
   name: string;
   description: string;
-  type: "consumable" | "equipment";
+  type: "consumable" | "equipment" | "material";
   rarity: Rarity;
   slot: Slot | null;
   effects: ItemEffects;
   requirements: Requirements;
+  sellPrice?: number;
+  source?: string;
 };
 export type AreaDefinition = {
   id: string;
@@ -55,8 +79,24 @@ export type AreaDefinition = {
   minLevel: number;
   order: number;
   color: string;
+  requirements?: Requirements;
+  art?: string;
+  hub?: boolean;
 };
-export type BossPhase = { threshold: number; name: string; strengthMultiplier: number };
+export type BossPhase = {
+  threshold: number;
+  name: string;
+  strengthMultiplier: number;
+  pattern?: EnemyMove[];
+};
+export type StatusKind = "poison" | "paralysis" | "armor-break";
+export type EnemyMove = {
+  kind: "attack" | "guard" | "charge";
+  label: string;
+  techniqueId?: string;
+  multiplier?: number;
+  status?: StatusKind;
+};
 export type EnemyDefinition = {
   id: string;
   name: string;
@@ -72,6 +112,10 @@ export type EnemyDefinition = {
   techniqueIds: string[];
   phases: BossPhase[];
   powerLevel?: number;
+  pattern?: EnemyMove[];
+  heroicOf?: string;
+  artId?: string;
+  guaranteedItem?: string;
 };
 export type TransformationDefinition = {
   id: string;
@@ -101,8 +145,89 @@ export type Catalog = {
   encounters: { areaId: string; enemyId: string; weight: number }[];
   drops: DropDefinition[];
   policies: ActionPolicy[];
+  chapters: ChapterDefinition[];
+  quests: QuestDefinition[];
+  settlements: SettlementDefinition[];
+  offers: ShopOffer[];
+  recipes: RecipeDefinition[];
 };
-export type DerivedStats = Attributes & { maxHp: number; maxKi: number; powerLevel: number };
+export type DerivedStats = Attributes & {
+  maxHp: number;
+  maxKi: number;
+  powerLevel: number;
+  critical?: number;
+  evasion?: number;
+  physicalResistance?: number;
+  statusResistance?: number;
+  guardBreak?: number;
+};
+export type ChapterDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  order: number;
+  minLevel: number;
+  finaleQuestId: string;
+  art: string;
+};
+export type QuestDefinition = {
+  id: string;
+  chapterId: string;
+  name: string;
+  description: string;
+  requirements: Requirements;
+  objectives: QuestObjective[];
+  rewards: {
+    xp: number;
+    zeni: number;
+    items?: { itemId: string; quantity: number }[];
+    flags?: string[];
+  };
+  next?: string;
+};
+export type QuestObjective =
+  | { kind: "defeat"; enemyId: string; quantity: number }
+  | { kind: "deliver"; itemId: string; quantity: number }
+  | { kind: "train"; quantity: number };
+export type SettlementDefinition = {
+  id: string;
+  name: string;
+  npc: string;
+  description: string;
+  requirements: Requirements;
+  art: string;
+  respec: boolean;
+};
+export type ShopOffer = {
+  id: string;
+  settlementId: string;
+  itemId: string;
+  price: number;
+  requirements: Requirements;
+};
+export type RecipeDefinition = {
+  id: string;
+  settlementId: string;
+  name: string;
+  outputItemId: string;
+  outputQuantity: number;
+  ingredients: { itemId: string; quantity: number }[];
+  zeniCost: number;
+  requirements: Requirements;
+};
+export type QuestProgress = { questId: string; counters: Record<string, number>; claimed: boolean };
+export type AutoItems = {
+  enabled: boolean;
+  hpThreshold: number;
+  kiThreshold: number;
+  maxUses: number;
+};
+export type CombatCommand =
+  | { kind: "attack"; techniqueId: string }
+  | { kind: "guard" }
+  | { kind: "charge" }
+  | { kind: "item"; itemId: string };
+export type CombatStatus = { kind: StatusKind; expires: number };
 export type CombatMode = "automatic" | "manual";
 export type CombatFighter = {
   name: string;
@@ -113,10 +238,16 @@ export type CombatFighter = {
   turns: number;
   nextUse: Record<string, number>;
   buffs: { attribute: keyof Attributes; amount: number; expires: number }[];
+  statuses?: CombatStatus[];
+  paralysisImmuneUntil?: number;
+  damageBuffUntil?: number;
+  damageBuffAmount?: number;
+  evasionBuffUntil?: number;
+  evasionBuffAmount?: number;
 };
 // Estado privado e serializável do motor; nunca aceito como entrada do cliente.
 export type CombatState = {
-  version: 1;
+  version: 1 | 2;
   id: string;
   areaId?: string;
   round: number;
@@ -128,6 +259,19 @@ export type CombatState = {
   phases: number[];
   events: BattleEvent[];
   result: BattleResult | null;
+  strategic?: {
+    initiative: "player" | "enemy";
+    intent: EnemyMove;
+    inventory: { itemId: string; quantity: number }[];
+    items: ItemDefinition[];
+    used: { itemId: string; quantity: number }[];
+    itemUses: number;
+    nextItemTurn: number;
+    senzuUsed: boolean;
+    autoItems: AutoItems;
+    enemyCharging: boolean;
+    playerLevel: number;
+  };
 };
 export type ActiveBattle = {
   id: string;
@@ -149,6 +293,14 @@ export type ActiveBattle = {
     available: boolean;
   }[];
   events: BattleEvent[];
+  version?: 1 | 2;
+  manualOnly?: boolean;
+  initiative?: "player" | "enemy";
+  intent?: EnemyMove;
+  statuses?: { player: CombatStatus[]; enemy: CombatStatus[] };
+  consumables?: { itemId: string; quantity: number; available: boolean }[];
+  itemUses?: number;
+  itemCooldown?: number;
 };
 export type CharacterState = {
   id: string;
@@ -168,6 +320,14 @@ export type CharacterState = {
   nextBattleAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  rulesVersion?: number;
+  allocation?: Allocation;
+  respecCount?: number;
+  belt?: string[];
+  autoItems?: AutoItems;
+  questProgress?: QuestProgress[];
+  ratedPower?: number;
+  campaignOrder?: number;
 };
 export type ActivityState = {
   id: string;
@@ -212,14 +372,21 @@ export type BattleEvent = { seq: number; round: number } & (
       amount: number;
       remainingHp: number;
     }
-  | { type: "effect"; actor: "player" | "enemy"; description: string; remainingHp?: number }
+  | {
+      type: "effect";
+      actor: "player" | "enemy";
+      description: string;
+      remainingHp?: number;
+      remainingKi?: number;
+    }
+  | { type: "intent"; description: string; initiative: "player" | "enemy" }
   | { type: "phase"; name: string }
   | { type: "defeat"; actor: "player" | "enemy" }
   | { type: "reward"; xp: number; zeni: number; drops: { itemId: string; quantity: number }[] }
   | { type: "end"; outcome: "victory" | "defeat" | "draw" }
 );
 export type BattleResult = {
-  version: 1;
+  version: 1 | 2;
   id: string;
   enemyId: string;
   areaId?: string;
@@ -230,6 +397,9 @@ export type BattleResult = {
   zeni: number;
   drops: { itemId: string; quantity: number }[];
   events: BattleEvent[];
+  usedItems?: { itemId: string; quantity: number }[];
+  zeniLost?: number;
+  rewardMultiplier?: number;
 };
 export type HistoryEntry = { id: string; kind: string; description: string; createdAt: string };
 export type GameSnapshot = {

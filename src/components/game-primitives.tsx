@@ -7,8 +7,15 @@ export const attributeLabels: Record<keyof Attributes, string> = {
   defense: "Defesa",
   speed: "Velocidade",
   endurance: "Resistência",
+  kiControl: "Controle de Ki",
 };
-export const attributeIcons = { strength: Swords, defense: Shield, speed: Wind, endurance: Heart };
+export const attributeIcons = {
+  strength: Swords,
+  defense: Shield,
+  speed: Wind,
+  endurance: Heart,
+  kiControl: Zap,
+};
 export const formatNumber = (n: number) => n.toLocaleString("pt-BR");
 export function Meter({
   label,
@@ -56,18 +63,26 @@ export function ItemIcon({
   item?: ItemDefinition;
   showcase?: boolean;
 }) {
-  const art = item ? itemArtwork[item.id] : undefined;
+  const art = item
+    ? (itemArtwork[item.id] ?? (item.id.startsWith("trofeu-") ? itemArtwork.trofeu : undefined))
+    : undefined;
   const Icon = !item
     ? Package
-    : item.slot === "weapon"
-      ? Swords
-      : item.slot === "armor"
-        ? Shield
-        : item.effects.restoreKi && !item.effects.restoreHp
-          ? Zap
-          : item.id === "semente-deuses"
-            ? CircleDot
-            : Heart;
+    : item.type === "material"
+      ? Package
+      : item.slot === "boots"
+        ? Wind
+        : item.slot === "accessory"
+          ? CircleDot
+          : item.slot === "weapon"
+            ? Swords
+            : item.slot === "armor"
+              ? Shield
+              : item.effects.restoreKi && !item.effects.restoreHp
+                ? Zap
+                : item.id === "semente-deuses"
+                  ? CircleDot
+                  : Heart;
   return (
     <span
       className={`item-icon rarity-${item?.rarity ?? "common"} ${art ? "has-art" : ""} ${showcase ? "item-showcase" : ""}`}
@@ -94,6 +109,26 @@ export function ItemEffects({ item }: { item: ItemDefinition }) {
       ))}
       {item.effects.restoreHp && <span>+{item.effects.restoreHp * 100}% HP</span>}
       {item.effects.restoreKi && <span>+{item.effects.restoreKi * 100}% Ki</span>}
+      {item.effects.critical && <span>+{Math.round(item.effects.critical * 100)}% crítico</span>}
+      {item.effects.evasion && <span>+{Math.round(item.effects.evasion * 100)}% esquiva</span>}
+      {item.effects.physicalResistance && (
+        <span>+{Math.round(item.effects.physicalResistance * 100)}% proteção física</span>
+      )}
+      {item.effects.statusResistance && (
+        <span>+{Math.round(item.effects.statusResistance * 100)}% resistência a efeitos</span>
+      )}
+      {item.effects.guardBreak && (
+        <span>+{Math.round(item.effects.guardBreak * 100)}% rompe-guarda</span>
+      )}
+      {item.effects.cure?.length ? (
+        <span>
+          Remove{" "}
+          {item.effects.cure.length === 1 && item.effects.cure.includes("poison")
+            ? "veneno"
+            : "efeitos"}
+        </span>
+      ) : null}
+      {item.effects.kiDamageBuff && <span>+15% dano de Ki · 3 rodadas</span>}
     </div>
   );
 }

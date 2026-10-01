@@ -26,7 +26,7 @@ const arena = (name: string, alt: string): GameArtwork => ({
   width: 1600,
   height: 900,
 });
-export const battleArenaArtwork = {
+export const battleArenaArtwork: Record<string, GameArtwork> = {
   floresta: arena("floresta", "Clareira da Floresta com montanhas ao fundo"),
   montanhas: arena("montanhas", "Planalto rochoso entre os cânions da Terra"),
   deserto: arena("deserto", "Arena de areia no Deserto ao pôr do sol"),
@@ -37,7 +37,7 @@ export type SpriteSheet = {
   src: string;
   alt: string;
   scale: number;
-  frames?: 3 | 4;
+  frames?: 1 | 3 | 4;
   frameWidth?: number;
 };
 export const playerBattleSprites: Readonly<Partial<Record<string, SpriteSheet>>> = {
@@ -245,3 +245,136 @@ export const characterArtwork = {
   vegeta: { src: "/images/characters/vegeta.webp", alt: "Vegeta", width: 440, height: 880 },
   piccolo: { src: "/images/characters/piccolo.webp", alt: "Piccolo", width: 440, height: 880 },
 } satisfies Record<string, GameArtwork>;
+
+const classicFighters = [
+  "yamcha",
+  "mai-shu",
+  "pilaf",
+  "prova-kame",
+  "giran",
+  "nam",
+  "jackie-chun",
+  "major-metallic",
+  "murasaki",
+  "buyon",
+  "general-white",
+  "robo-pirata",
+  "general-blue",
+  "prova-karin",
+  "tao-pai-pai",
+  "comandante-black",
+  "chaos",
+  "tenshinhan",
+  "cymbal",
+  "tambourine",
+  "drum",
+  "soldado-neve",
+  "oficial-red-ribbon",
+];
+for (const id of classicFighters) {
+  Object.assign(enemyArtwork, {
+    [id]: {
+      src: `/images/classic/${id}.webp`,
+      alt: `Adversário clássico: ${id.replaceAll("-", " ")}`,
+      width: 384,
+      height: 512,
+    },
+  });
+  Object.assign(enemyBattleSprites, {
+    [id]: {
+      src: `/images/classic/${id}.webp`,
+      alt: `Lutador: ${id.replaceAll("-", " ")}`,
+      scale: 1,
+      frames: 1,
+    },
+  });
+}
+for (const id of [
+  "castelo-pilaf",
+  "kame-house",
+  "papaya",
+  "jingle",
+  "muscle-tower",
+  "cidade-oeste",
+  "caverna-pirata",
+  "santuario-karin",
+  "torre-karin",
+  "planicies-sul",
+  "castelo-rei",
+]) {
+  const art = {
+    src: `/images/classic-areas/${id}.webp`,
+    alt: `Cenário de ${id.replaceAll("-", " ")}`,
+    width: 1200,
+    height: 675,
+  };
+  battleArenaArtwork[id] = art;
+  Object.assign(areaArtwork, { [id]: art });
+}
+battleArenaArtwork["red-ribbon"] = {
+  src: "/images/classic-areas/red-ribbon-v2.webp",
+  alt: "Quartel-general Red Ribbon",
+  width: 1200,
+  height: 675,
+};
+Object.assign(areaArtwork, {
+  "encontro-extra": areaArtwork.deserto,
+  "red-ribbon": battleArenaArtwork["red-ribbon"],
+});
+
+for (const id of [
+  "bastao",
+  "luvas-combate",
+  "espada-deserto",
+  "bastao-magico",
+  "gi-kame",
+  "traje-tsuru",
+  "colete-red-ribbon",
+  "roupa-termica",
+  "botas-leves",
+  "botas-reforcadas",
+  "botas-agilidade",
+  "botas-karin",
+  "faixa-foco",
+  "braceletes",
+  "amuleto-protecao",
+  "faixa-mestre",
+  "pocao-hp-forte",
+  "pocao-ki-forte",
+  "antidoto",
+  "tonico-foco",
+  "refeicao",
+  "erva",
+  "fruto-ki",
+  "couro",
+  "presa",
+  "tecido",
+  "sucata",
+  "componente",
+  "insignia",
+  "trofeu",
+  "materiais-bolsa",
+  "capsula",
+]) {
+  Object.assign(itemArtwork, {
+    [id]: {
+      src: `/images/classic-items/${id}.webp`,
+      alt: `Item: ${id.replaceAll("-", " ")}`,
+      width: 384,
+      height: 384,
+    },
+  });
+}
+for (const id of ["jan-ken", "rogafufuken", "taiyoken", "zanzoken", "dodonpa", "kikohou"]) {
+  Object.assign(techniqueArtwork, {
+    [id]: {
+      src: `/images/classic-techniques/${id}.webp`,
+      alt: `Técnica: ${id}`,
+      width: 480,
+      height: 480,
+    },
+  });
+}
+
+Object.assign(enemyArtwork, { "fera-planicies": enemyArtwork.dinossauro });
+Object.assign(enemyBattleSprites, { "fera-planicies": enemyBattleSprites.dinossauro });

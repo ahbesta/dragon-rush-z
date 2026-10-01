@@ -30,7 +30,7 @@ export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot
         <span>{names.player}</span>
         <small>VS</small>
         <span className="battle-adversary">
-          <EnemyPortrait enemyId={battle.enemyId} sizes="100px" />
+          <EnemyPortrait enemyId={battle.enemyId} artId={enemy?.artId} sizes="100px" />
           {names.enemy}
         </span>
       </div>
@@ -46,6 +46,11 @@ export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot
             </span>
           ))}
         </div>
+      )}
+      {!!battle.zeniLost && (
+        <p className="muted">
+          Derrota: −{battle.zeniLost} Zeni. Seus níveis, XP e equipamentos foram preservados.
+        </p>
       )}
       <CombatEventLog events={events} names={names} />
       <button className="log-expand" onClick={() => setExpanded((v) => !v)}>
@@ -70,6 +75,10 @@ export function CombatEventLog({
           <span className="log-round">{String(event.round).padStart(2, "0")}</span>
           {event.type === "start" ? (
             <span>A batalha começou.</span>
+          ) : event.type === "intent" ? (
+            <span>
+              {event.description}. {names[event.initiative]} age primeiro.
+            </span>
           ) : event.type === "attack" ? (
             <span>
               <strong>{names[event.actor]}</strong> usou {event.techniqueName}.

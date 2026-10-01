@@ -1,6 +1,7 @@
 import type { Db, Transaction } from "./client";
 import * as s from "./schema";
 import { seedCatalog as c } from "./seed-data";
+import { eq } from "drizzle-orm";
 
 export async function seedDatabase(db: Db | Transaction) {
   // Catálogos são dados administrativos. Reexecutar o seed nunca altera personagens.
@@ -29,11 +30,30 @@ export async function seedDatabase(db: Db | Transaction) {
       .insert(s.transformations)
       .values(row)
       .onConflictDoUpdate({ target: s.transformations.id, set: row });
+  for (const row of c.chapters)
+    await db.insert(s.chapters).values(row).onConflictDoUpdate({ target: s.chapters.id, set: row });
+  for (const row of c.quests)
+    await db.insert(s.quests).values(row).onConflictDoUpdate({ target: s.quests.id, set: row });
+  for (const row of c.settlements)
+    await db
+      .insert(s.settlements)
+      .values(row)
+      .onConflictDoUpdate({ target: s.settlements.id, set: row });
+  for (const row of c.offers)
+    await db
+      .insert(s.shopOffers)
+      .values(row)
+      .onConflictDoUpdate({ target: s.shopOffers.id, set: row });
+  for (const row of c.recipes)
+    await db.insert(s.recipes).values(row).onConflictDoUpdate({ target: s.recipes.id, set: row });
+  for (const area of c.areas) await db.delete(s.encounters).where(eq(s.encounters.areaId, area.id));
   for (const row of c.encounters)
     await db
       .insert(s.encounters)
       .values(row)
       .onConflictDoUpdate({ target: [s.encounters.areaId, s.encounters.enemyId], set: row });
+  // Remove obsolete drops only for our managed enemies (not custom administrative content).
+  for (const enemy of c.enemies) await db.delete(s.drops).where(eq(s.drops.enemyId, enemy.id));
   for (const row of c.drops)
     await db
       .insert(s.drops)

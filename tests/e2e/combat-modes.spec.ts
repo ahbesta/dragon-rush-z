@@ -4,8 +4,8 @@ import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { createDatabase } from "../../src/server/db/client";
 import * as s from "../../src/server/db/schema";
-import { deriveStats } from "../../src/game/attributes";
-import { applyExperience } from "../../src/game/progression";
+import { deriveBuildStats as deriveStats } from "../../src/game/attributes";
+import { applyExperience } from "./progress-fixture";
 import type { GameSnapshot } from "../../src/game/types";
 const email = `combat-modes-${randomUUID()}@example.test`;
 const password = randomUUID() + "Test!";
@@ -115,7 +115,7 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await expect(battle).toHaveCount(0);
   let snapshot = await state(page);
   expect(snapshot.activeBattle).toBeNull();
-  expect(snapshot.character).toMatchObject({ combatMode: "automatic", xp: 40, zeni: 70 });
+  expect(snapshot.character).toMatchObject({ combatMode: "automatic", xp: 36, zeni: 66 });
   expect(snapshot.latestBattle?.id).toBe(initial.activeBattle!.id);
   expect(snapshot.latestBattle?.events.slice(0, beforeAuto.activeBattle!.events.length)).toEqual(
     beforeAuto.activeBattle!.events,
@@ -182,7 +182,7 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await automatic.click();
   await expect(battle).toHaveCount(0);
   snapshot = await state(page);
-  const bossProgress = applyExperience(1, 0, 1000, race.base, race);
+  const bossProgress = applyExperience(1, 0, 30000, race.base, race);
   const bossStats = deriveStats(bossProgress.base, bossProgress.level);
   await database.db
     .update(s.characters)
@@ -191,7 +191,7 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
       hp: bossStats.maxHp,
       ki: bossStats.maxKi,
       nextBattleAt: null,
-      flags: ["defeated:soldado-red-ribbon"],
+      flags: ["quest:drum", "quest:tambourine"],
     })
     .where(eq(s.characters.id, snapshot.character.id));
   await page.reload();
@@ -200,8 +200,26 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await go(page, "Batalhar");
   await page.getByRole("button", { name: "Enfrentar boss", exact: true }).click();
   await expect(battle.getByRole("heading", { name: "Lutador vs Piccolo Daimao" })).toBeVisible();
-  expect((await state(page)).activeBattle?.enemyMaxHp).toBe(450);
+  expect((await state(page)).activeBattle?.enemyMaxHp).toBe(832);
   await automatic.click();
+  await expect(battle).toBeVisible();
+  expect((await state(page)).activeBattle?.manualOnly).toBe(true);
+  for (let turns = 0; turns < 40 && (await state(page)).activeBattle; turns++) {
+    const b = (await state(page)).activeBattle!;
+    const response = await page.request.post("/api/game/actions", {
+      headers: origin,
+      data: {
+        action: "battle.turn",
+        battleId: b.id,
+        round: b.round,
+        techniqueId: b.techniques.find((t) => t.available)?.id ?? "soco",
+        idempotencyKey: randomUUID(),
+      },
+    });
+    expect(response.ok(), await response.text()).toBe(true);
+  }
+  await page.reload();
+  await go(page, "Batalhar");
   await expect(battle).toHaveCount(0);
   const completed = await state(page);
   expect(completed.latestBattle?.enemyId).toBe("piccolo-daimao");

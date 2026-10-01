@@ -16,6 +16,16 @@ export function unmetRequirements(req: Requirements, context: RequirementContext
   if (req.masterId && !context.flags.includes(`master:${req.masterId}`))
     reasons.push(`Treinamento com ${req.masterId}`);
   for (const flag of req.flags ?? [])
-    if (!context.flags.includes(flag)) reasons.push(`Conquista: ${flag}`);
+    if (!context.flags.includes(flag)) {
+      const [kind, ...parts] = flag.split(":");
+      const name = parts.join(" ").replaceAll("-", " ");
+      reasons.push(
+        kind === "quest"
+          ? `Concluir missão: ${name}`
+          : kind === "defeated"
+            ? `Vencer ${name}`
+            : `Conquista: ${name}`,
+      );
+    }
   return reasons;
 }

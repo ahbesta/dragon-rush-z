@@ -4,8 +4,8 @@ import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { createDatabase } from "../../src/server/db/client";
 import * as s from "../../src/server/db/schema";
-import { deriveStats } from "../../src/game/attributes";
-import { applyExperience } from "../../src/game/progression";
+import { deriveBuildStats as deriveStats } from "../../src/game/attributes";
+import { applyExperience } from "./progress-fixture";
 import type { ActionPayload } from "../../src/game/validation";
 import type { GameSnapshot } from "../../src/game/types";
 
@@ -160,6 +160,8 @@ test("arena real: sprites, chute, Ki, replay sem recompensas, cenários e movime
     snapshot = await state(page);
     expect(snapshot.latestBattle!.events.slice(0, previousEvents.length)).toEqual(previousEvents);
   }
+  if (!(await arena.getByRole("button", { name: "Pular animação", exact: true }).isVisible()))
+    await arena.getByRole("button", { name: "Rever batalha", exact: true }).click();
   await expect(arena.getByRole("button", { name: "Pular animação", exact: true })).toBeVisible();
   await arena.getByRole("button", { name: "Pular animação", exact: true }).click();
   await expect(stage).toHaveAttribute("data-playing", "false");

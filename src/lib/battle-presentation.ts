@@ -115,6 +115,11 @@ export function presentBattleEvents(
       });
     } else if (event.type === "effect") {
       const before = { ...vitals };
+      if (event.remainingKi !== undefined)
+        vitals = {
+          ...vitals,
+          [event.actor === "player" ? "playerKi" : "enemyKi"]: event.remainingKi,
+        };
       if (event.remainingHp !== undefined)
         vitals = {
           ...vitals,

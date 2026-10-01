@@ -24,6 +24,14 @@ import type {
   TechniqueEffect,
   Slot,
   Rarity,
+  Allocation,
+  AutoItems,
+  QuestProgress,
+  QuestDefinition,
+  SettlementDefinition,
+  ShopOffer,
+  RecipeDefinition,
+  EnemyMove,
 } from "@/game/types";
 
 const time = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
@@ -107,6 +115,11 @@ export const races = pgTable("races", {
   color: text("color").notNull(),
   base: jsonb("base").$type<Attributes>().notNull(),
   growth: jsonb("growth").$type<Attributes>().notNull(),
+  affinities: jsonb("affinities")
+    .$type<Allocation>()
+    .notNull()
+    .default({ strength: 1, defense: 1, speed: 1, endurance: 1, kiControl: 1 }),
+  kiBase: integer("ki_base").notNull().default(10),
 });
 export const masters = pgTable("masters", {
   id: text("id").primaryKey(),
@@ -126,6 +139,7 @@ export const techniques = pgTable(
     requirements: jsonb("requirements").$type<Requirements>().notNull().default({}),
     learnCost: integer("learn_cost").notNull(),
     effects: jsonb("effects").$type<TechniqueEffect[]>().notNull().default([]),
+    hpCost: doublePrecision("hp_cost").notNull().default(0),
   },
   (t) => [
     check(
@@ -140,16 +154,18 @@ export const items = pgTable(
     id: text("id").primaryKey(),
     name: text("name").notNull(),
     description: text("description").notNull(),
-    type: text("type").$type<"consumable" | "equipment">().notNull(),
+    type: text("type").$type<"consumable" | "equipment" | "material">().notNull(),
     rarity: text("rarity").$type<Rarity>().notNull(),
     slot: text("slot").$type<Slot>(),
     effects: jsonb("effects").$type<ItemEffects>().notNull(),
     requirements: jsonb("requirements").$type<Requirements>().notNull().default({}),
+    sellPrice: integer("sell_price").notNull().default(0),
+    source: text("source").notNull().default(""),
   },
   (t) => [
     check(
       "item_shape",
-      sql`(${t.type} = 'consumable' AND ${t.slot} IS NULL) OR (${t.type} = 'equipment' AND ${t.slot} IN ('weapon', 'armor', 'accessory'))`,
+      sql`(${t.type} IN ('consumable','material') AND ${t.slot} IS NULL) OR (${t.type} = 'equipment' AND ${t.slot} IN ('weapon', 'armor', 'boots', 'accessory'))`,
     ),
   ],
 );
@@ -161,6 +177,9 @@ export const areas = pgTable("areas", {
   minLevel: integer("min_level").notNull(),
   order: integer("sort_order").notNull(),
   color: text("color").notNull(),
+  requirements: jsonb("requirements").$type<Requirements>().notNull().default({}),
+  art: text("art").notNull().default("floresta"),
+  hub: boolean("hub").notNull().default(false),
 });
 export const enemies = pgTable(
   "enemies",
@@ -178,6 +197,10 @@ export const enemies = pgTable(
     requirements: jsonb("requirements").$type<Requirements>().notNull().default({}),
     techniqueIds: jsonb("technique_ids").$type<string[]>().notNull(),
     phases: jsonb("phases").$type<BossPhase[]>().notNull().default([]),
+    pattern: jsonb("pattern").$type<EnemyMove[]>().notNull().default([]),
+    heroicOf: text("heroic_of"),
+    artId: text("art_id"),
+    guaranteedItem: text("guaranteed_item"),
   },
   (t) => [
     check(
@@ -258,16 +281,106 @@ export const characters = pgTable(
       .default(["chute", "soco"]),
     combatMode: text("combat_mode").$type<CombatMode>().notNull().default("automatic"),
     nextBattleAt: time("next_battle_at"),
+    rulesVersion: integer("rules_version").notNull().default(1),
+    allocation: jsonb("allocation")
+      .$type<Allocation>()
+      .notNull()
+      .default({ strength: 0, defense: 0, speed: 0, endurance: 0, kiControl: 0 }),
+    respecCount: integer("respec_count").notNull().default(0),
+    belt: jsonb("belt").$type<string[]>().notNull().default(["pocao-hp", "pocao-ki", "antidoto"]),
+    autoItems: jsonb("auto_items")
+      .$type<AutoItems>()
+      .notNull()
+      .default({ enabled: false, hpThreshold: 30, kiThreshold: 20, maxUses: 1 }),
+    questProgress: jsonb("quest_progress").$type<QuestProgress[]>().notNull().default([]),
+    ratedPower: integer("rated_power").notNull().default(0),
+    campaignOrder: integer("campaign_order").notNull().default(0),
     createdAt: time("created_at").notNull().defaultNow(),
     updatedAt: time("updated_at").notNull().defaultNow(),
   },
   (t) => [
     check("character_combat_mode", sql`${t.combatMode} IN ('automatic', 'manual')`),
     check(
+      "character_build_values",
+      sql`${t.rulesVersion} IN (1,2) AND ${t.respecCount} >= 0 AND ${t.ratedPower} >= 0 AND ${t.campaignOrder} >= 0`,
+    ),
+    check(
       "character_values",
       sql`${t.level} >= 1 AND ${t.xp} >= 0 AND ${t.zeni} >= 0 AND ${t.hp} >= 0 AND ${t.ki} >= 0`,
     ),
   ],
+);
+export const chapters = pgTable("chapters", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  order: integer("sort_order").notNull(),
+  minLevel: integer("min_level").notNull(),
+  finaleQuestId: text("finale_quest_id").notNull(),
+  art: text("art").notNull(),
+});
+export const quests = pgTable("quests", {
+  id: text("id").primaryKey(),
+  chapterId: text("chapter_id")
+    .notNull()
+    .references(() => chapters.id),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  requirements: jsonb("requirements")
+    .$type<QuestDefinition["requirements"]>()
+    .notNull()
+    .default({}),
+  objectives: jsonb("objectives").$type<QuestDefinition["objectives"]>().notNull(),
+  rewards: jsonb("rewards").$type<QuestDefinition["rewards"]>().notNull(),
+  next: text("next"),
+});
+export const settlements = pgTable("settlements", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  npc: text("npc").notNull(),
+  description: text("description").notNull(),
+  requirements: jsonb("requirements")
+    .$type<SettlementDefinition["requirements"]>()
+    .notNull()
+    .default({}),
+  art: text("art").notNull(),
+  respec: boolean("respec").notNull().default(true),
+});
+export const shopOffers = pgTable(
+  "shop_offers",
+  {
+    id: text("id").primaryKey(),
+    settlementId: text("settlement_id")
+      .notNull()
+      .references(() => settlements.id),
+    itemId: text("item_id")
+      .notNull()
+      .references(() => items.id),
+    price: integer("price").notNull(),
+    requirements: jsonb("requirements").$type<ShopOffer["requirements"]>().notNull().default({}),
+  },
+  (t) => [check("offer_price", sql`${t.price} >= 0`)],
+);
+export const recipes = pgTable(
+  "recipes",
+  {
+    id: text("id").primaryKey(),
+    settlementId: text("settlement_id")
+      .notNull()
+      .references(() => settlements.id),
+    name: text("name").notNull(),
+    outputItemId: text("output_item_id")
+      .notNull()
+      .references(() => items.id),
+    outputQuantity: integer("output_quantity").notNull(),
+    ingredients: jsonb("ingredients").$type<RecipeDefinition["ingredients"]>().notNull(),
+    zeniCost: integer("zeni_cost").notNull(),
+    requirements: jsonb("requirements")
+      .$type<RecipeDefinition["requirements"]>()
+      .notNull()
+      .default({}),
+  },
+  (t) => [check("recipe_values", sql`${t.outputQuantity} > 0 AND ${t.zeniCost} >= 0`)],
 );
 export const activeBattles = pgTable("active_battles", {
   id: uuid("id").primaryKey(),

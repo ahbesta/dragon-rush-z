@@ -1,4 +1,5 @@
 "use client";
+import { EquipmentComparison } from "./equipment-comparison";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -53,6 +54,12 @@ import { transformationArtwork, destinationArtwork, techniqueArtwork } from "@/l
 import { ArtworkImage } from "./artwork-image";
 import { EnemyPortrait } from "./enemy-portrait";
 import { ActivityAnimation } from "./activity-animation";
+import { BuildPanel } from "./build-panel";
+import { AdventurePanel } from "./adventure-panel";
+import { SettlementPanel } from "./settlement-panel";
+import { RankingPanel } from "./ranking-panel";
+import { PreparationPanel } from "./preparation-panel";
+import { EnemyDrops, HeroicPanel } from "./enemy-intel";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -62,6 +69,8 @@ const sections = [
   { id: "quests", label: "Missões", icon: ScrollText },
   { id: "inventory", label: "Inventário", icon: Package },
   { id: "techniques", label: "Técnicas", icon: Zap },
+  { id: "settlements", label: "Vilas e mercado", icon: Store },
+  { id: "ranking", label: "Ranking", icon: Trophy },
   { id: "transformations", label: "Transformações", icon: Flame },
 ] as const;
 type Section = (typeof sections)[number]["id"];
@@ -192,6 +201,9 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     }
   }
   const { character: c, stats, catalog, activity } = snapshot;
+  const currentChapter =
+    catalog.chapters.find((ch) => !c.flags.includes(`quest:${ch.finaleQuestId}`)) ??
+    catalog.chapters.at(-1);
   const now = time.server;
   const remaining = activity
     ? Math.max(0, Math.ceil((new Date(activity.finishesAt).getTime() - now) / 1000))
@@ -203,7 +215,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const combatBlocked = blocked || battleWait > 0 || c.hp <= 0;
   const currentSection = sections.find((s) => s.id === section)!;
   const selectedArea = catalog.areas.find((a) => a.id === areaId) ?? catalog.areas[0];
-  const boss = catalog.enemies.find((e) => e.boss);
+  const boss = catalog.enemies.find((e) => e.id === "piccolo-daimao");
   function requirements(req: Requirements) {
     return unmetRequirements(req, {
       level: c.level,
@@ -274,9 +286,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 {id === "inventory" && snapshot.inventory.length > 0 && (
                   <small>{snapshot.inventory.length}</small>
                 )}
-                {(id === "quests" || id === "transformations") && (
-                  <span className="nav-coming-soon">EM BREVE</span>
-                )}
+                {id === "transformations" && <span className="nav-coming-soon">EM BREVE</span>}
               </button>
             ))}
             <Link
@@ -347,13 +357,18 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                             ? "Domine seu Ki. Defina como você luta."
                             : section === "transformations"
                               ? "Novos poderes exigem mais do que um nível."
-                              : "Novas histórias aguardam seu guerreiro."}
+                              : section === "ranking"
+                                ? "Veja sua posição entre os guerreiros da Terra."
+                                : section === "settlements"
+                                  ? "Abasteça sua bolsa, fabrique equipamentos e troque seus troféus."
+                                  : "Conclua os objetivos e abra o próximo capítulo da sua história."}
                 </p>
               </div>
               <span className="chapter-tag">
                 <DragonBall stars={1} />
                 <span>
-                  CAPÍTULO 01<small>O INÍCIO DA JORNADA</small>
+                  CAPÍTULO {String(currentChapter?.order ?? 1).padStart(2, "0")}
+                  <small>{currentChapter?.name.toUpperCase() ?? "O INÍCIO DA JORNADA"}</small>
                 </span>
               </span>
             </div>
@@ -526,6 +541,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 </div>
               </div>
               <div className="dashboard-middle">
+                <BuildPanel
+                  key={JSON.stringify(c.allocation)}
+                  snapshot={snapshot}
+                  busy={blocked}
+                  onAction={act}
+                  onVillage={() => go("settlements")}
+                />
                 <section className="panel attributes-panel">
                   <div className="section-title">
                     <h3>
@@ -536,7 +558,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   <div className="attribute-grid">
                     {(Object.keys(attributeLabels) as (keyof Attributes)[]).map((key) => {
                       const Icon = attributeIcons[key];
-                      const bonus = stats[key] - c.base[key];
+                      const bonus = (stats[key] ?? 0) - (c.base[key] ?? 0);
                       return (
                         <div className="attribute" key={key}>
                           <Icon size={20} />
@@ -546,7 +568,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                             {bonus ? (
                               <span className="green-text">+{bonus} equipamento</span>
                             ) : (
-                              `+${snapshot.race.growth[key]} / nível`
+                              `Afinidade ×${snapshot.race.affinities?.[key] ?? 1}`
                             )}
                           </small>
                         </div>
@@ -565,7 +587,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     </button>
                   </div>
                   <div className="equipment-slots">
-                    {(["weapon", "armor", "accessory"] as const).map((slot) => {
+                    {(["weapon", "armor", "boots", "accessory"] as const).map((slot) => {
                       const item = catalog.items.find((i) => i.id === c.equipment[slot]);
                       return (
                         <div key={slot} className="equipment-slot">
@@ -576,7 +598,9 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                                 ? "ARMA"
                                 : slot === "armor"
                                   ? "ARMADURA"
-                                  : "ACESSÓRIO"}
+                                  : slot === "boots"
+                                    ? "BOTAS"
+                                    : "ACESSÓRIO"}
                             </small>
                             <strong>{item?.name ?? "Slot vazio"}</strong>
                             {item && <ItemEffects item={item} />}
@@ -644,7 +668,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                       <ArrowRight size={17} />
                     </button>
                     <small>
-                      <LockKeyhole size={12} /> Nível 6 + vitória contra Red Ribbon
+                      <LockKeyhole size={12} /> Campanha clássica · nível 19+ e vitória contra Drum
                     </small>
                   </section>
                 )}
@@ -744,7 +768,8 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   <div>
                     <strong>Cada raça tem seu potencial.</strong>
                     <p>
-                      {snapshot.race.trait}. Seus atributos crescem automaticamente a cada nível.
+                      {snapshot.race.trait}. Distribua os pontos de cada nível para construir sua
+                      especialização.
                     </p>
                   </div>
                 </section>
@@ -758,13 +783,19 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 <Compass size={17} />
                 <span>PLANETA TERRA</span>
                 <small>
-                  {catalog.areas.filter((a) => a.minLevel <= c.level).length} /{" "}
-                  {catalog.areas.length} ÁREAS DISPONÍVEIS
+                  {
+                    catalog.areas.filter(
+                      (a) =>
+                        a.minLevel <= c.level && requirements(a.requirements ?? {}).length === 0,
+                    ).length
+                  }{" "}
+                  / {catalog.areas.length} ÁREAS DISPONÍVEIS
                 </small>
               </div>
               <div className="area-grid">
                 {catalog.areas.map((area) => {
-                  const locked = c.level < area.minLevel;
+                  const locked =
+                    c.level < area.minLevel || requirements(area.requirements ?? {}).length > 0;
                   return (
                     <button
                       key={area.id}
@@ -797,7 +828,16 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     {section === "explore" && (
                       <button
                         className="button primary small"
-                        disabled={combatBlocked || c.level < selectedArea.minLevel}
+                        disabled={
+                          combatBlocked ||
+                          c.level < selectedArea.minLevel ||
+                          requirements(selectedArea.requirements ?? {}).length > 0 ||
+                          !catalog.encounters.some(
+                            (e) =>
+                              e.areaId === selectedArea.id &&
+                              !catalog.enemies.find((enemy) => enemy.id === e.enemyId)?.boss,
+                          )
+                        }
                         onClick={() => act({ action: "explore", areaId: selectedArea.id })}
                       >
                         <Compass size={16} />
@@ -809,7 +849,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     {c.combatMode === "manual"
                       ? "Encontre um adversário e escolha suas técnicas a cada rodada."
                       : section === "explore"
-                        ? "Ao explorar, você encontrará um inimigo desta área. O combate é automático."
+                        ? "Ao explorar, você encontra um inimigo comum da área. Bosses e provas são desafios manuais."
                         : "Escolha um adversário e suas técnicas serão usadas na ordem definida."}
                   </p>
                   <div className="enemy-list">
@@ -819,7 +859,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                         const enemy = catalog.enemies.find((e) => e.id === encounter.enemyId)!;
                         return (
                           <div className="enemy-row" key={enemy.id}>
-                            <EnemyPortrait enemyId={enemy.id} />
+                            <EnemyPortrait enemyId={enemy.id} artId={enemy.artId} />
                             <div className="enemy-info">
                               <strong>{enemy.name}</strong>
                               <small>
@@ -830,22 +870,36 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                               <span>+{enemy.xpReward} XP</span>
                               <small>◈ {enemy.zeniReward} Zeni</small>
                             </div>
-                            {section === "battle" && (
+                            {(section === "battle" || enemy.boss) && (
                               <button
                                 className="button small secondary"
-                                disabled={combatBlocked || c.level < selectedArea.minLevel}
+                                disabled={
+                                  combatBlocked ||
+                                  c.level < selectedArea.minLevel ||
+                                  requirements(selectedArea.requirements ?? {}).length > 0 ||
+                                  requirements(enemy.requirements).length > 0
+                                }
                                 onClick={() =>
-                                  act({
-                                    action: "battle",
-                                    areaId: selectedArea.id,
-                                    enemyId: enemy.id,
-                                  })
+                                  act(
+                                    enemy.boss
+                                      ? { action: "boss", enemyId: enemy.id }
+                                      : {
+                                          action: "battle",
+                                          areaId: selectedArea.id,
+                                          enemyId: enemy.id,
+                                        },
+                                  )
                                 }
                               >
-                                {battleWait ? `${battleWait}s` : "Batalhar"}
+                                {battleWait
+                                  ? `${battleWait}s`
+                                  : enemy.boss
+                                    ? "Desafiar · manual"
+                                    : "Batalhar"}
                                 <Swords size={14} />
                               </button>
                             )}
+                            <EnemyDrops enemy={enemy} snapshot={snapshot} />
                           </div>
                         );
                       })}
@@ -860,7 +914,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     sizes="(max-width: 700px) 100px, 220px"
                   />
                   <div>
-                    <span className="eyebrow">BOSS • PRIMEIRO GRANDE DESAFIO</span>
+                    <span className="eyebrow">BOSS • FINAL DA CAMPANHA CLÁSSICA</span>
                     <h2>{boss.name}</h2>
                     <p>{boss.description}</p>
                     <div className="boss-arena-stats">
@@ -876,8 +930,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                     </div>
                     {bossReasons.length > 0 && (
                       <small className="boss-requirements">
-                        <LockKeyhole size={13} /> Requer nível 6 e vitória contra um Soldado da Red
-                        Ribbon.
+                        <LockKeyhole size={13} /> {bossReasons.join(" · ")}
                       </small>
                     )}
                   </div>
@@ -891,6 +944,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   </button>
                 </section>
               )}
+              <HeroicPanel snapshot={snapshot} busy={combatBlocked} onAction={act} />
               {snapshot.latestBattle && !snapshot.activeBattle && (
                 <BattleLog
                   key={snapshot.latestBattle.id}
@@ -903,6 +957,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
 
           {section === "inventory" && (
             <>
+              <PreparationPanel snapshot={snapshot} busy={blocked} onAction={act} />
               <div className="inventory-toolbar">
                 <span>
                   <Package size={18} /> {snapshot.inventory.reduce((sum, i) => sum + i.quantity, 0)}{" "}
@@ -942,6 +997,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                         <h3>{item.name}</h3>
                         <p>{item.description}</p>
                         <ItemEffects item={item} />
+                        {!equipped && <EquipmentComparison snapshot={snapshot} item={item} />}
                         <div className="item-card-bottom">
                           {equipped ? (
                             <button
@@ -951,17 +1007,35 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                             >
                               <Check size={14} /> Equipado · remover
                             </button>
+                          ) : item.type === "material" ? (
+                            <button
+                              className="button small secondary"
+                              onClick={() => go("settlements")}
+                            >
+                              Usar nas vilas
+                            </button>
                           ) : (
                             <button
                               className={`button small ${item.type === "equipment" ? "primary" : "secondary"}`}
                               disabled={blocked || reasons.length > 0}
-                              onClick={() =>
+                              onClick={() => {
+                                if (
+                                  item.effects.kiDamageBuff ||
+                                  (item.effects.cure?.length &&
+                                    !item.effects.restoreHp &&
+                                    !item.effects.restoreKi)
+                                ) {
+                                  document
+                                    .querySelector(".rpg-preparation")
+                                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                                  return;
+                                }
                                 act(
                                   item.type === "equipment"
                                     ? { action: "equipment.equip", itemId: item.id }
                                     : { action: "item.use", itemId: item.id },
-                                )
-                              }
+                                );
+                              }}
                             >
                               {reasons.length ? (
                                 <LockKeyhole size={14} />
@@ -974,7 +1048,12 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                                 ? reasons[0]
                                 : item.type === "equipment"
                                   ? "Equipar"
-                                  : "Usar item"}
+                                  : item.effects.kiDamageBuff ||
+                                      (item.effects.cure?.length &&
+                                        !item.effects.restoreHp &&
+                                        !item.effects.restoreKi)
+                                    ? "Preparar para batalha"
+                                    : "Usar item"}
                             </button>
                           )}
                         </div>
@@ -1182,21 +1261,25 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           )}
 
           {section === "quests" && (
-            <section className="panel empty-state quest-empty">
-              <ScrollText size={48} strokeWidth={1.2} />
-              <span className="eyebrow orange">NOVAS HISTÓRIAS EM PREPARAÇÃO</span>
-              <h2>Sua jornada está só começando.</h2>
-              <p>
-                Missões e progressão pelas sagas serão adicionadas após esta primeira versão.
-                <br />
-                Por enquanto, treine, explore e prepare-se para Piccolo Daimao.
-              </p>
-              <button className="button primary" onClick={() => go("explore")}>
-                Explorar a Terra
-                <Compass size={16} />
-              </button>
-            </section>
+            <AdventurePanel
+              snapshot={snapshot}
+              busy={blocked || battleWait > 0}
+              onAction={act}
+              onArea={(id) => {
+                setAreaId(id);
+                go("battle");
+              }}
+            />
           )}
+          {section === "settlements" && (
+            <SettlementPanel
+              key={c.respecCount}
+              snapshot={snapshot}
+              busy={blocked}
+              onAction={act}
+            />
+          )}
+          {section === "ranking" && <RankingPanel snapshot={snapshot} />}
           <footer className="game-footer">
             <span>
               DRAGON RUSH Z <small>• PROJETO DE FÃ</small>

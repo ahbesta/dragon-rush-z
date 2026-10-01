@@ -1,16 +1,15 @@
 import "server-only";
 import { createHash, randomInt, randomUUID } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
-import { deriveStats } from "@/game/attributes";
-import { applyExperience, xpRequired } from "@/game/progression";
+import { deriveBuildStats } from "@/game/attributes";
+import { xpRequired } from "@/game/progression";
 import { unmetRequirements } from "@/game/requirements";
-import {
-  advanceCombat,
-  CombatRuleError,
-  createCombat,
-  finishCombat,
-  presentCombat,
-} from "@/game/combat";
+import { createStrategicCombat, advanceStrategicCombat } from "@/game/strategic-combat";
+import { advanceQuests, defeatLoss, itemRecovery } from "@/game/economy";
+import { buildAttributes, emptyAllocation } from "@/game/builds";
+import { statsFor, upgradeCharacter, grantExperience } from "./character-rules";
+import { executeWorldAction } from "./world-actions";
+import { advanceCombat, CombatRuleError, finishCombat, presentCombat } from "@/game/combat";
 import { actionInput, characterInput } from "@/game/validation";
 import type {
   BattleResult,
@@ -18,7 +17,6 @@ import type {
   CharacterState,
   CombatState,
   GameSnapshot,
-  ItemDefinition,
 } from "@/game/types";
 import type { Db, Transaction } from "./db/client";
 import * as s from "./db/schema";
@@ -34,12 +32,6 @@ const hashCommand = (input: unknown) =>
 const missing = (message: string): never => {
   throw new GameError("NOT_FOUND", message, 404);
 };
-function statsFor(character: CharacterState, catalog: Catalog) {
-  const equipped = Object.values(character.equipment)
-    .map((id) => catalog.items.find((i) => i.id === id))
-    .filter((i): i is ItemDefinition => Boolean(i));
-  return deriveStats(character.base, character.level, equipped);
-}
 async function clock(tx: Transaction): Promise<Date> {
   const result = await tx.execute<{ now: Date | string }>(sql`SELECT clock_timestamp() AS now`);
   return new Date(result.rows[0].now);
@@ -85,6 +77,34 @@ async function addItem(tx: Transaction, characterId: string, itemId: string, qua
       set: { quantity: sql`${s.inventory.quantity} + ${quantity}` },
     });
 }
+async function removeItem(tx: Transaction, characterId: string, itemId: string, quantity: number) {
+  const [owned] = await tx
+    .select()
+    .from(s.inventory)
+    .where(and(eq(s.inventory.characterId, characterId), eq(s.inventory.itemId, itemId)));
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || !owned || owned.quantity < quantity)
+    throw new GameError("NOT_OWNED", "Você não possui a quantidade necessária deste item.", 409);
+  if (owned.quantity === quantity)
+    await tx
+      .delete(s.inventory)
+      .where(and(eq(s.inventory.characterId, characterId), eq(s.inventory.itemId, itemId)));
+  else
+    await tx
+      .update(s.inventory)
+      .set({ quantity: owned.quantity - quantity })
+      .where(and(eq(s.inventory.characterId, characterId), eq(s.inventory.itemId, itemId)));
+}
+async function consumeBattleItems(
+  tx: Transaction,
+  characterId: string,
+  used: { itemId: string; quantity: number }[],
+  previous: { itemId: string; quantity: number }[] = [],
+) {
+  for (const item of used) {
+    const delta = item.quantity - (previous.find((p) => p.itemId === item.itemId)?.quantity ?? 0);
+    if (delta > 0) await removeItem(tx, characterId, item.itemId, delta);
+  }
+}
 function requireAllowed(
   character: CharacterState,
   catalog: Catalog,
@@ -120,14 +140,17 @@ export async function createCharacter(db: Db, userId: string, rawInput: unknown)
       throw new GameError("CHARACTER_EXISTS", "Sua conta já possui um personagem.", 409);
     const [race] = await tx.select().from(s.races).where(eq(s.races.id, input.raceId));
     if (!race) return missing("Raça não encontrada.");
-    const stats = deriveStats(race.base, 1);
+    const base = buildAttributes(race, emptyAllocation());
+    const stats = deriveBuildStats(base, 1);
     const [character] = await tx
       .insert(s.characters)
       .values({
         userId,
         name: input.name,
         raceId: race.id,
-        base: race.base,
+        base,
+        rulesVersion: 2,
+        ratedPower: stats.powerLevel,
         hp: stats.maxHp,
         ki: stats.maxKi,
       })
@@ -136,6 +159,8 @@ export async function createCharacter(db: Db, userId: string, rawInput: unknown)
       { characterId: character.id, techniqueId: "soco" },
       { characterId: character.id, techniqueId: "chute" },
     ]);
+    await addItem(tx, character.id, "pocao-hp", 2);
+    await addItem(tx, character.id, "pocao-ki", 1);
     await appendHistory(
       tx,
       character.id,
@@ -181,7 +206,12 @@ export async function executeAction(
       .select()
       .from(s.activeBattles)
       .where(eq(s.activeBattles.characterId, character.id));
-    if (active && input.action !== "battle.turn" && input.action !== "combat.mode")
+    if (
+      active &&
+      input.action !== "battle.turn" &&
+      input.action !== "battle.action" &&
+      input.action !== "combat.mode"
+    )
       throw new GameError(
         "BATTLE_PENDING",
         "Conclua o combate atual antes de iniciar outra ação.",
@@ -195,22 +225,40 @@ export async function executeAction(
         pending.finishesAt.toISOString(),
       );
     const result: Receipt = { message: "" };
+    if (!active) upgradeCharacter(character, race);
     const policy = (id: string) =>
       catalog.policies.find((p) => p.id === id) ?? missing("Regras de atividade indisponíveis.");
     const stats = statsFor(character, catalog);
-    const completeBattle = async (battle: BattleResult) => {
+    const completeBattle = async (
+      battle: BattleResult,
+      previousUsed: { itemId: string; quantity: number }[] = [],
+    ) => {
+      await consumeBattleItems(tx, character.id, battle.usedItems ?? [], previousUsed);
       character.hp = battle.playerHp;
       character.ki = battle.playerKi;
       character.nextBattleAt = new Date(now.getTime() + policy("battle").durationSeconds * 1000);
       if (battle.outcome === "victory") {
-        Object.assign(
-          character,
-          applyExperience(character.level, character.xp, battle.xp, character.base, race),
-        );
+        grantExperience(character, battle.xp, race);
         character.zeni += battle.zeni;
         character.flags = [...new Set([...character.flags, `defeated:${battle.enemyId}`])];
         for (const drop of battle.drops)
           await addItem(tx, character.id, drop.itemId, drop.quantity);
+        if (battle.version === 2)
+          advanceQuests(
+            character,
+            catalog.quests,
+            { kind: "defeat", enemyId: battle.enemyId },
+            (q) =>
+              unmetRequirements(q.requirements, {
+                level: character.level,
+                powerLevel: statsFor(character, catalog).powerLevel,
+                raceId: character.raceId,
+                flags: character.flags,
+              }).length === 0,
+          );
+      } else if (battle.outcome === "defeat" && battle.version === 2) {
+        battle.zeniLost = defeatLoss(character.zeni);
+        character.zeni -= battle.zeniLost;
       }
       await tx.insert(s.battles).values({
         id: battle.id,
@@ -226,24 +274,31 @@ export async function executeAction(
         battle.outcome === "victory"
           ? `${enemyName} derrotado! +${battle.xp} XP e +${battle.zeni} Zeni.`
           : battle.outcome === "defeat"
-            ? `Derrota contra ${enemyName}. Descanse e tente novamente.`
+            ? `Derrota contra ${enemyName}. ${battle.zeniLost ?? 0} Zeni perdidos. Os consumíveis usados foram gastos. Descanse e prepare-se.`
             : "Empate. Nenhuma recompensa concedida.";
       await appendHistory(tx, character.id, "battle", result.message);
     };
     switch (input.action) {
       case "combat.mode": {
         character.combatMode = input.mode;
-        if (active && input.mode === "automatic") {
-          await completeBattle(finishCombat(active.state, random));
+        if (
+          active &&
+          input.mode === "automatic" &&
+          !(active.state.version === 2 && active.state.definition.boss)
+        ) {
+          await completeBattle(finishCombat(active.state, random), active.state.strategic?.used);
         } else {
           result.message =
             input.mode === "manual"
               ? "Combate manual selecionado. Você escolhe cada técnica."
-              : "Combate automático selecionado.";
+              : active?.state.definition.boss
+                ? "Automático selecionado para o farm. Este desafio deve ser concluído manualmente."
+                : "Combate automático selecionado.";
         }
         break;
       }
-      case "battle.turn": {
+      case "battle.turn":
+      case "battle.action": {
         if (!active || active.id !== input.battleId)
           throw new GameError("BATTLE_NOT_PENDING", "Este combate não está em andamento.", 409);
         if (input.round !== active.state.round + 1)
@@ -254,13 +309,22 @@ export async function executeAction(
           );
         let next: CombatState;
         try {
-          next = advanceCombat(active.state, input.techniqueId, random);
+          next =
+            input.action === "battle.action"
+              ? advanceStrategicCombat(active.state, input.command, random)
+              : advanceCombat(active.state, input.techniqueId, random);
         } catch (error) {
           if (error instanceof CombatRuleError) throw new GameError(error.code, error.message, 409);
           throw error;
         }
-        if (next.result) await completeBattle(next.result);
+        if (next.result) await completeBattle(next.result, active.state.strategic?.used);
         else {
+          await consumeBattleItems(
+            tx,
+            character.id,
+            next.strategic?.used ?? [],
+            active.state.strategic?.used,
+          );
           character.hp = next.player.hp;
           character.ki = next.player.ki;
           await tx
@@ -317,14 +381,19 @@ export async function executeAction(
           result.message = "Descanso concluído. HP e Ki restaurados.";
         } else {
           const reward = policy("training").xpReward;
-          const progress = applyExperience(
-            character.level,
-            character.xp,
-            reward,
-            character.base,
-            race,
+          grantExperience(character, reward, race);
+          advanceQuests(
+            character,
+            catalog.quests,
+            { kind: "train" },
+            (q) =>
+              unmetRequirements(q.requirements, {
+                level: character.level,
+                powerLevel: statsFor(character, catalog).powerLevel,
+                raceId: character.raceId,
+                flags: character.flags,
+              }).length === 0,
           );
-          Object.assign(character, progress);
           result.message = `Treinamento concluído: +${reward} XP.`;
         }
         await tx
@@ -354,17 +423,31 @@ export async function executeAction(
             catalog.areas.find((a) => a.id === input.areaId) ?? missing("Área não encontrada.");
           if (character.level < area.minLevel)
             throw new GameError("AREA_LOCKED", `Esta área exige nível ${area.minLevel}.`, 403);
+          requireAllowed(character, catalog, area.requirements ?? {});
           const encounters = catalog.encounters.filter((e) => e.areaId === area.id);
           if (input.action === "battle") {
             if (!encounters.some((e) => e.enemyId === input.enemyId))
               throw new GameError("INVALID_ENCOUNTER", "Inimigo não pertence à área.");
             enemyId = input.enemyId;
           } else {
-            const total = encounters.reduce((sum, e) => sum + e.weight, 0);
+            const eligible = encounters.filter((enc) => {
+              const enemy = catalog.enemies.find((e) => e.id === enc.enemyId);
+              return (
+                enemy &&
+                !enemy.boss &&
+                unmetRequirements(enemy.requirements, {
+                  level: character.level,
+                  powerLevel: stats.powerLevel,
+                  raceId: character.raceId,
+                  flags: character.flags,
+                }).length === 0
+              );
+            });
+            const total = eligible.reduce((sum, e) => sum + e.weight, 0);
             if (!total) return missing("Esta área não possui encontros.");
             let roll = random() * total;
-            enemyId = encounters[encounters.length - 1].enemyId;
-            for (const encounter of encounters) {
+            enemyId = eligible[eligible.length - 1].enemyId;
+            for (const encounter of eligible) {
               roll -= encounter.weight;
               if (roll < 0) {
                 enemyId = encounter.enemyId;
@@ -378,6 +461,20 @@ export async function executeAction(
         if (enemy.boss !== (input.action === "boss"))
           throw new GameError("INVALID_ENCOUNTER", "Use o encontro correto para este inimigo.");
         requireAllowed(character, catalog, enemy.requirements);
+        const bossArea =
+          input.action === "boss"
+            ? catalog.areas.find(
+                (a) =>
+                  a.id ===
+                  catalog.encounters.find((e) => e.enemyId === (enemy.heroicOf ?? enemy.id))
+                    ?.areaId,
+              )
+            : undefined;
+        if (bossArea) {
+          if (character.level < bossArea.minLevel)
+            throw new GameError("AREA_LOCKED", `Esta área exige nível ${bossArea.minLevel}.`, 403);
+          requireAllowed(character, catalog, bossArea.requirements ?? {});
+        }
         const learned = await tx
           .select()
           .from(s.learnedTechniques)
@@ -388,9 +485,13 @@ export async function executeAction(
         const playerTechniques = available
           .map((id) => catalog.techniques.find((t) => t.id === id))
           .filter((t): t is Catalog["techniques"][number] => Boolean(t));
-        const combat = createCombat({
+        const combatInventory = await tx
+          .select()
+          .from(s.inventory)
+          .where(eq(s.inventory.characterId, character.id));
+        const combat = createStrategicCombat({
           id: randomUUID(),
-          areaId: input.action === "boss" ? undefined : input.areaId,
+          areaId: input.action === "boss" ? bossArea?.id : input.areaId,
           player: {
             name: character.name,
             hp: character.hp,
@@ -402,8 +503,18 @@ export async function executeAction(
           techniques: catalog.techniques,
           drops: catalog.drops,
           random,
+          playerLevel: character.level,
+          belt: character.belt ?? [],
+          inventory: combatInventory,
+          items: catalog.items,
+          autoItems: character.autoItems ?? {
+            enabled: false,
+            hpThreshold: 30,
+            kiThreshold: 20,
+            maxUses: 1,
+          },
         });
-        if (character.combatMode === "manual") {
+        if (character.combatMode === "manual" || enemy.boss) {
           await tx.insert(s.activeBattles).values({
             id: combat.id,
             characterId: character.id,
@@ -437,13 +548,18 @@ export async function executeAction(
         } else {
           if (item.type !== "consumable")
             throw new GameError("INVALID_ITEM", "Este item não é consumível.");
-          const hp = Math.min(
+          if (item.effects.kiDamageBuff || (item.effects.cure?.length && !item.effects.restoreHp))
+            throw new GameError(
+              "BATTLE_ONLY",
+              "Use este item pela bolsa durante uma batalha.",
+              409,
+            );
+          const { hp, ki } = itemRecovery(
+            character.hp,
+            character.ki,
             stats.maxHp,
-            character.hp + Math.floor(stats.maxHp * (item.effects.restoreHp ?? 0)),
-          );
-          const ki = Math.min(
             stats.maxKi,
-            character.ki + Math.floor(stats.maxKi * (item.effects.restoreKi ?? 0)),
+            item,
           );
           if (hp === character.hp && ki === character.ki)
             throw new GameError(
@@ -518,7 +634,26 @@ export async function executeAction(
         result.message = "Prioridade de técnicas atualizada.";
         break;
       }
+      default: {
+        const message = await executeWorldAction(input, {
+          tx,
+          character,
+          catalog,
+          race,
+          requireAllowed: (req) => requireAllowed(character, catalog, req),
+          addItem: (id, q) => addItem(tx, character.id, id, q),
+          removeItem: (id, q) => removeItem(tx, character.id, id, q),
+        });
+        if (!message) throw new GameError("INVALID_ACTION", "Ação indisponível.");
+        result.message = message;
+        await appendHistory(tx, character.id, input.action, message);
+      }
     }
+    const [remainingActive] = await tx
+      .select({ id: s.activeBattles.id })
+      .from(s.activeBattles)
+      .where(eq(s.activeBattles.characterId, character.id));
+    if (!remainingActive) upgradeCharacter(character, race);
     const finalStats = statsFor(character, catalog);
     await tx
       .update(s.characters)
@@ -534,6 +669,14 @@ export async function executeAction(
         combatMode: character.combatMode,
         flags: character.flags,
         nextBattleAt: character.nextBattleAt,
+        rulesVersion: character.rulesVersion,
+        allocation: character.allocation,
+        respecCount: character.respecCount,
+        belt: character.belt,
+        autoItems: character.autoItems,
+        questProgress: character.questProgress,
+        ratedPower: finalStats.powerLevel,
+        campaignOrder: character.campaignOrder,
         updatedAt: now,
       })
       .where(and(eq(s.characters.id, character.id), eq(s.characters.userId, userId)));
@@ -574,6 +717,10 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
       clock_timestamp() AS now`);
       const { inventory, learned, unlocked, activities, history, battles, active, now } =
         result.rows[0];
+      if (!active.length) upgradeCharacter(character, race);
+      const displayedStats = statsFor(character, catalog);
+      character.hp = Math.min(character.hp, displayedStats.maxHp);
+      character.ki = Math.min(character.ki, displayedStats.maxKi);
       const {
         userId: _owner,
         createdAt: _created,
@@ -589,7 +736,7 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
           ...publicCharacter,
           nextBattleAt: character.nextBattleAt?.toISOString() ?? null,
         },
-        stats: statsFor(character, catalog),
+        stats: displayedStats,
         xpRequired: xpRequired(character.level),
         race,
         catalog,

@@ -41,7 +41,7 @@ function FighterSprite({
           className="arena-sprite-sheet"
           style={{
             width: `${100 * (sprite.frames ?? 3)}%`,
-            transform: `translateX(${(-100 * pose) / (sprite.frames ?? 3)}%)`,
+            transform: `translateX(${(-100 * (sprite.frames === 1 ? 0 : pose)) / (sprite.frames ?? 3)}%)`,
           }}
           sizes="(max-width: 600px) 360px, 600px"
           unoptimized
@@ -109,17 +109,19 @@ export function BattleArena({
   const frame = playback.frame;
   const areaId =
     battle.areaId ??
-    snapshot.catalog.encounters.find((encounter) => encounter.enemyId === battle.enemyId)?.areaId ??
+    snapshot.catalog.encounters.find(
+      (encounter) => encounter.enemyId === (enemy?.heroicOf ?? battle.enemyId),
+    )?.areaId ??
     "floresta";
-  const sceneKey = enemy?.boss
-    ? "palacio-daimao"
-    : areaId in battleArenaArtwork
-      ? (areaId as keyof typeof battleArenaArtwork)
-      : "floresta";
+  const sceneKey =
+    (enemy?.heroicOf ?? enemy?.id) === "piccolo-daimao"
+      ? "palacio-daimao"
+      : areaId in battleArenaArtwork
+        ? (areaId as keyof typeof battleArenaArtwork)
+        : "floresta";
   const background = battleArenaArtwork[sceneKey];
-  const areaName = enemy?.boss
-    ? "Palácio do Rei Demônio"
-    : (snapshot.catalog.areas.find((area) => area.id === areaId)?.name ?? "Planeta Terra");
+  const areaName =
+    snapshot.catalog.areas.find((area) => area.id === areaId)?.name ?? "Planeta Terra";
   const pose = (actor: "player" | "enemy") =>
     frame?.kind === "strike" && frame.actor === actor
       ? frame.ki
@@ -140,7 +142,7 @@ export function BattleArena({
       .join(" ");
   const outcome = !active ? snapshot.latestBattle?.outcome : undefined;
   const idleCaption = active
-    ? "Escolha sua técnica. Seu próximo golpe pode decidir a batalha."
+    ? "Observe a intenção do inimigo e escolha sua ação."
     : outcome === "victory"
       ? "Vitória! Seu guerreiro superou mais um desafio."
       : outcome === "defeat"
@@ -234,7 +236,7 @@ export function BattleArena({
           const sprite =
             actor === "player"
               ? playerBattleSprites[snapshot.character.raceId]
-              : enemyBattleSprites[battle.enemyId];
+              : enemyBattleSprites[enemy?.heroicOf ?? battle.enemyId];
           return (
             <div
               key={actor}
@@ -355,7 +357,7 @@ export function BattleArena({
           <div className="arena-command-heading">
             <div>
               <span className="eyebrow">SUA PRÓXIMA AÇÃO</span>
-              <h3>Escolha sua técnica</h3>
+              <h3>{active?.version === 2 ? "Escolha sua ação" : "Escolha sua técnica"}</h3>
             </div>
             <small>
               {busy
@@ -375,7 +377,9 @@ export function BattleArena({
             <CombatEventLog events={events} names={{ player: playerName, enemy: enemyName }} />
           </details>
           <p className="manual-battle-hint">
-            A luta fica salva ao sair. Você pode assumir o automático pelo seletor de modo.
+            {active?.manualOnly
+              ? "A luta fica salva ao sair. Bosses e provas são concluídos com suas ações manuais."
+              : "A luta fica salva ao sair. Você pode assumir o automático pelo seletor de modo."}
           </p>
         </div>
       )}

@@ -13,6 +13,7 @@ const labels = {
   defense: "Defesa",
   speed: "Velocidade",
   endurance: "Resistência",
+  kiControl: "Controle de Ki",
 };
 export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
   const [raceId, setRaceId] = useState(races[0]?.id ?? "");
@@ -136,13 +137,15 @@ export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
                 <p>{race.description}</p>
               </div>
               <div className="race-attrs">
-                {Object.entries(race.base).map(([key, value]) => (
-                  <div key={key}>
-                    <span>{labels[key as keyof typeof labels]}</span>
-                    <strong>{value}</strong>
-                    <small>+{race.growth[key as keyof typeof labels]} / nível</small>
-                  </div>
-                ))}
+                {Object.entries({ ...race.base, kiControl: race.kiBase ?? 10 }).map(
+                  ([key, value]) => (
+                    <div key={key}>
+                      <span>{labels[key as keyof typeof labels]}</span>
+                      <strong>{value}</strong>
+                      <small>Afinidade ×{race.affinities?.[key as keyof typeof labels] ?? 1}</small>
+                    </div>
+                  ),
+                )}
               </div>
             </div>
           )}
@@ -153,7 +156,8 @@ export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
           )}
           <div className="creation-bottom">
             <p>
-              Sua raça define os atributos iniciais e o crescimento.
+              Sua raça define os atributos iniciais e as afinidades. Você distribui cinco pontos por
+              nível.
               <br />
               <strong>Escolha com cuidado: sua origem é permanente.</strong>
             </p>

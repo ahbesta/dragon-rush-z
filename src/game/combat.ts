@@ -9,6 +9,7 @@ import type {
   EnemyDefinition,
   TechniqueDefinition,
 } from "./types";
+import { advanceStrategicCombat, presentStrategicCombat } from "./strategic-combat";
 
 type EventInput = BattleEvent extends infer T
   ? T extends BattleEvent
@@ -105,6 +106,7 @@ function playerTechniques(state: CombatState) {
   return [...state.player.techniques.filter((t) => t.id !== "soco"), state.fallback];
 }
 export function presentCombat(state: CombatState): ActiveBattle {
+  if (state.version === 2) return presentStrategicCombat(state);
   return {
     id: state.id,
     enemyId: state.definition.id,
@@ -177,6 +179,12 @@ export function advanceCombat(
   techniqueId: string | undefined,
   random: () => number,
 ): CombatState {
+  if (previous.version === 2)
+    return advanceStrategicCombat(
+      previous,
+      techniqueId ? { kind: "attack", techniqueId } : undefined,
+      random,
+    );
   if (previous.result) throw new CombatRuleError("BATTLE_FINISHED", "Este combate já terminou.");
   let selected: TechniqueDefinition | undefined;
   if (techniqueId !== undefined) {
@@ -266,8 +274,8 @@ export function advanceCombat(
           description: `Recuperou ${amount} HP`,
           remainingHp: actor.hp,
         });
-      } else {
-        actor.stats[effect.attribute] += effect.amount;
+      } else if (effect.kind === "buff") {
+        actor.stats[effect.attribute] = (actor.stats[effect.attribute] ?? 0) + effect.amount;
         actor.buffs.push({
           attribute: effect.attribute,
           amount: effect.amount,

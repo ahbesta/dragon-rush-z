@@ -3,8 +3,8 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDatabase } from "../../src/server/db/client";
 import * as s from "../../src/server/db/schema";
-import { applyExperience } from "../../src/game/progression";
-import { deriveStats } from "../../src/game/attributes";
+import { applyExperience } from "./progress-fixture";
+import { deriveBuildStats as deriveStats } from "../../src/game/attributes";
 
 const emails: string[] = [];
 const database = createDatabase(process.env.DATABASE_URL!);

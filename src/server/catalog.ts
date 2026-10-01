@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import type { Catalog } from "@/game/types";
 import type { Db, Transaction } from "./db/client";
 import * as s from "./db/schema";
-import { calculatePowerLevel } from "@/game/attributes";
+import { calculatePowerLevel, calculateBuildPowerLevel } from "@/game/attributes";
 import { rowsAsJson } from "./db/json-query";
 
 // Um round trip para os catálogos. Os nomes das propriedades vêm do schema,
@@ -13,14 +13,21 @@ export async function readCatalog(db: Db | Transaction): Promise<Catalog> {
     ${rowsAsJson(s.items)} AS items, ${rowsAsJson(s.areas)} AS areas,
     ${rowsAsJson(s.enemies)} AS enemies, ${rowsAsJson(s.transformations)} AS transformations,
     ${rowsAsJson(s.masters)} AS masters, ${rowsAsJson(s.encounters)} AS encounters,
-    ${rowsAsJson(s.drops)} AS drops, ${rowsAsJson(s.actionPolicies)} AS policies`);
+    ${rowsAsJson(s.drops)} AS drops, ${rowsAsJson(s.actionPolicies)} AS policies,
+    ${rowsAsJson(s.chapters)} AS chapters, ${rowsAsJson(s.quests)} AS quests,
+    ${rowsAsJson(s.settlements)} AS settlements, ${rowsAsJson(s.shopOffers)} AS offers,
+    ${rowsAsJson(s.recipes)} AS recipes`);
   const catalog = result.rows[0];
   return {
     ...catalog,
     areas: catalog.areas.sort((a, b) => a.order - b.order),
+    chapters: catalog.chapters.sort((a, b) => a.order - b.order),
     enemies: catalog.enemies.map((e) => ({
       ...e,
-      powerLevel: calculatePowerLevel(e.attributes, e.maxHp, e.maxKi),
+      powerLevel:
+        e.attributes.kiControl !== undefined
+          ? calculateBuildPowerLevel(e.attributes, e.maxHp, e.maxKi)
+          : calculatePowerLevel(e.attributes, e.maxHp, e.maxKi),
     })),
   };
 }

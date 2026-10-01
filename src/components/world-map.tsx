@@ -93,7 +93,7 @@ export function WorldMap({
     setStatus(`Você chegou: ${mapDestinations.find((d) => d.id === id)!.title}.`);
     if (id === "explore" || id === "battle") setOverlay({ kind: "areas", mode: id });
     else if (id === "training" || id === "rest") setOverlay({ kind: "activity", activity: id });
-    else if (id === "market") onNavigate("techniques");
+    else if (id === "market") onNavigate("settlements");
     else if (id === "inventory") onNavigate("inventory");
     else onCharacter();
   }
@@ -325,7 +325,11 @@ export function WorldMap({
               </p>
               <div className="map-area-grid">
                 {catalog.areas.map((area) => {
-                  const locked = character.level < area.minLevel;
+                  const locked =
+                    character.level < area.minLevel ||
+                    (area.requirements?.flags ?? []).some(
+                      (flag) => !character.flags.includes(flag),
+                    );
                   const art = areaArtwork[area.id];
                   const enemies = catalog.encounters
                     .filter((e) => e.areaId === area.id)

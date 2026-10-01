@@ -4,8 +4,8 @@ import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { createDatabase } from "../../src/server/db/client";
 import * as s from "../../src/server/db/schema";
-import { applyExperience } from "../../src/game/progression";
-import { deriveStats } from "../../src/game/attributes";
+import { applyExperience } from "./progress-fixture";
+import { deriveBuildStats as deriveStats } from "../../src/game/attributes";
 import type { GameSnapshot } from "../../src/game/types";
 
 const email = `world-map-${randomUUID()}@example.test`;
@@ -146,14 +146,16 @@ test("mapa: raças, caminhada, destinos, áreas, teclado, mercado e atividades r
     dialog.getByText("Escolha uma área para explorar e encontrar seus inimigos."),
   ).toBeVisible();
   await expect(dialog.locator(".map-area-option")).toHaveCount(real.catalog.areas.length);
-  await expect(dialog.getByRole("button", { name: /Região da Red Ribbon/ })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: /QG Red Ribbon/ })).toBeDisabled();
   await dialog.screenshot({ path: ".local/screenshots/map-area-desktop.png" });
   await page.keyboard.press("Tab");
   expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
   await dialog.getByRole("button", { name: /Montanhas/ }).click();
   await expect(page.getByRole("heading", { name: "Explorar", exact: true })).toBeVisible();
   await expect(
-    page.locator(".encounter-panel").getByRole("heading", { name: "Montanhas", exact: true }),
+    page
+      .locator(".encounter-panel")
+      .getByRole("heading", { name: "Montanhas do Monte Paozu", exact: true }),
   ).toBeVisible();
   expect(posts).toBe(0);
 
@@ -168,9 +170,8 @@ test("mapa: raças, caminhada, destinos, áreas, teclado, mercado e atividades r
   expect(posts).toBe(0);
   await go(page, "Personagem");
   await page.getByRole("button", { name: "Mapa: Mercado", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Mercado de técnicas", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Vilas e serviços", exact: true })).toBeVisible();
+  await go(page, "Técnicas");
   const technique = page.locator(".technique-card").filter({ hasText: "Rajada de Ki" });
   await technique.getByRole("button", { name: "Aprender · 30 Zeni", exact: true }).click();
   await expect(technique.getByText("APRENDIDA", { exact: true })).toBeVisible();
