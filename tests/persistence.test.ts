@@ -471,7 +471,7 @@ describe("Builds, campanha e economia transacionais", () => {
       code: "ALREADY_CLAIMED",
     });
   });
-  it("boss é manual mesmo com preferência automática e não pode ser assumido pelo automático", async () => {
+  it("primeiro desafio do boss é manual e não pode ser assumido pelo automático", async () => {
     await database.db
       .update(s.characters)
       .set({ level: 3, flags: ["quest:floresta"] })
@@ -484,6 +484,55 @@ describe("Builds, campanha e economia transacionais", () => {
     await expect(
       command({ action: "attributes.allocate", points: { ...emptyAllocation(), strength: 1 } }),
     ).rejects.toMatchObject({ code: "BATTLE_PENDING" });
+  });
+  it("vitória manual libera o farm daquele boss, mantém a escolha manual e permite assumir uma revanche", async () => {
+    const initial = (await readSnapshot(database.db, owner))!;
+    await database.db
+      .update(s.characters)
+      .set({
+        level: 25,
+        hp: 600,
+        ki: 200,
+        allocation: { ...emptyAllocation(), strength: 65, defense: 55 },
+        base: buildAttributes(initial.race, { ...emptyAllocation(), strength: 65, defense: 55 }),
+        flags: ["quest:floresta"],
+      })
+      .where(eq(s.characters.userId, owner));
+    await command({ action: "boss", enemyId: "yamcha" });
+    let snap = (await readSnapshot(database.db, owner))!;
+    expect(snap.activeBattle?.manualOnly).toBe(true);
+    for (let round = 0; snap.activeBattle && round < 60; round++) {
+      await command({
+        action: "battle.turn",
+        battleId: snap.activeBattle.id,
+        round: snap.activeBattle.round,
+        techniqueId: "soco",
+      });
+      snap = (await readSnapshot(database.db, owner))!;
+    }
+    expect(snap.activeBattle).toBeNull();
+    expect(snap.latestBattle?.outcome).toBe("victory");
+    expect(snap.character.flags).toContain("defeated:yamcha");
+    await database.db
+      .update(s.characters)
+      .set({ hp: snap.stats.maxHp, ki: snap.stats.maxKi, nextBattleAt: null })
+      .where(eq(s.characters.userId, owner));
+    const second = await command({ action: "boss", enemyId: "yamcha" });
+    expect(second.battle?.outcome).toBe("victory");
+    expect((await readSnapshot(database.db, owner))!.activeBattle).toBeNull();
+    await command({ action: "combat.mode", mode: "manual" });
+    await database.db
+      .update(s.characters)
+      .set({ hp: snap.stats.maxHp, nextBattleAt: null })
+      .where(eq(s.characters.userId, owner));
+    await command({ action: "boss", enemyId: "yamcha" });
+    const manual = (await readSnapshot(database.db, owner))!;
+    expect(manual.activeBattle?.manualOnly).toBe(false);
+    const finished = await command({ action: "combat.mode", mode: "automatic" });
+    expect(finished.battle?.id).toBe(manual.activeBattle!.id);
+    expect(finished.battle?.outcome).toBe("victory");
+    expect((await readSnapshot(database.db, owner))!.activeBattle).toBeNull();
+    expect(initial.character.flags).not.toContain("defeated:yamcha");
   });
   it("poção da bolsa é descontada exatamente uma vez e recarga persiste após reload", async () => {
     await database.db.update(s.characters).set({ hp: 60 }).where(eq(s.characters.userId, owner));

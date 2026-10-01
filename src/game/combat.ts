@@ -10,6 +10,7 @@ import type {
   TechniqueDefinition,
 } from "./types";
 import { advanceStrategicCombat, presentStrategicCombat } from "./strategic-combat";
+import { requiresManualCombat } from "./combat-access";
 
 type EventInput = BattleEvent extends infer T
   ? T extends BattleEvent
@@ -105,8 +106,8 @@ export function createCombat(input: CombatInput): CombatState {
 function playerTechniques(state: CombatState) {
   return [...state.player.techniques.filter((t) => t.id !== "soco"), state.fallback];
 }
-export function presentCombat(state: CombatState): ActiveBattle {
-  if (state.version === 2) return presentStrategicCombat(state);
+export function presentCombat(state: CombatState, flags: readonly string[] = []): ActiveBattle {
+  if (state.version === 2) return presentStrategicCombat(state, flags);
   return {
     id: state.id,
     enemyId: state.definition.id,
@@ -118,6 +119,7 @@ export function presentCombat(state: CombatState): ActiveBattle {
     enemyKi: state.enemy.ki,
     enemyMaxHp: state.enemy.stats.maxHp,
     enemyMaxKi: state.enemy.stats.maxKi,
+    manualOnly: requiresManualCombat(state.definition, flags),
     techniques: playerTechniques(state).map((t) => {
       const cooldownRemaining = Math.max(
         0,

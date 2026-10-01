@@ -1,3 +1,4 @@
+import { openBattleCommands } from "./turn-menu";
 import { test, expect } from "./browser-test";
 import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
@@ -122,6 +123,7 @@ test("arena real: sprites, chute, Ki, replay sem recompensas, cenários e movime
     await arena.screenshot({ path: `.local/screenshots/arena-idle-${width}.png` });
   }
   const first = await state(page);
+  await openBattleCommands(arena, "Técnicas");
   await arena.getByRole("button", { name: "Usar Chute", exact: true }).click();
   await expect(stage).toHaveAttribute("data-playing", "true");
   await expect(arena.locator(".player .arena-sprite-window")).toHaveAttribute("data-pose", "3");
@@ -138,6 +140,7 @@ test("arena real: sprites, chute, Ki, replay sem recompensas, cenários e movime
     "aria-valuenow",
     String(snapshot.activeBattle!.playerHp),
   );
+  await openBattleCommands(arena, "Técnicas");
   await arena.getByRole("button", { name: "Usar Rajada de Ki", exact: true }).click();
   await expect(arena.locator(".fx-from-player.fx-ki")).toBeAttached();
   await expect(arena.locator(".player .arena-sprite-window")).toHaveAttribute("data-pose", "2");
@@ -152,6 +155,7 @@ test("arena real: sprites, chute, Ki, replay sem recompensas, cenários e movime
   if (snapshot.activeBattle) {
     const battleId = snapshot.activeBattle.id;
     const previousEvents = snapshot.activeBattle.events;
+    await openBattleCommands(arena);
     await arena.getByRole("button", { name: "Usar Soco", exact: true }).click();
     await page
       .getByRole("region", { name: "Modo de combate", exact: true })
@@ -257,11 +261,13 @@ test("arena real: sprites, chute, Ki, replay sem recompensas, cenários e movime
     .filter({ hasText: "Bandido" })
     .getByRole("button", { name: "Batalhar", exact: true })
     .click();
+  await openBattleCommands(arena);
   await arena.getByRole("button", { name: "Usar Soco", exact: true }).click();
   await expect(arena.getByText("Rodada 2", { exact: true })).toBeVisible();
   await expect(stage).toHaveAttribute("data-playing", "false");
   await expect(arena.getByText("Movimento reduzido", { exact: true })).toBeVisible();
   await expect(arena.locator(".arena-fx")).toHaveCount(0);
+  await openBattleCommands(arena);
   await expect(arena.getByRole("button", { name: "Usar Soco", exact: true })).toBeEnabled();
   snapshot = await state(page);
   await expect(

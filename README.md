@@ -45,7 +45,7 @@ Em outro terminal, execute migrations, seed e `dev`. PGlite persiste em `.local/
 - Dashboard, atributos, HP, Ki, XP, nível, Power Level, Zeni e atividades recentes.
 - Treinamento: 30 segundos e 10 XP; descanso gratuito: 30 segundos e recuperação completa.
 - Campanha clássica em seis capítulos, 16 áreas e missões encadeadas: Paozu/Pilaf, Escola Kame/21º torneio, Jingle/Muscle Tower, Blue/Karin/Red Ribbon, 22º torneio e Piccolo Daimao.
-- Farm automático ou manual; bosses e provas de mestres exigem combate manual. Adversários mostram a intenção e a iniciativa antes de cada rodada.
+- Farm automático ou manual; a primeira vitória contra cada boss ou prova de mestre exige combate manual. Adversários mostram a intenção e a iniciativa antes de cada rodada.
 - Defesa, concentração de Ki, veneno, paralisia, quebra de defesa, interrupção e consumíveis durante a luta.
 - Equipamentos em quatro slots, atributos secundários, materiais, fabricação, venda e troca de troféus em cinco vilas.
 - Bolsas de três tipos de consumível; automático só usa poções se autorizado pelo jogador.
@@ -94,7 +94,9 @@ O seletor **Modo de combate** aparece em todas as telas do personagem. A prefer�
 
 No **Manual**, exploração, adversários e bosses iniciam uma batalha persistente. Escolha uma das técnicas da sua prioridade de combate ou Soco a cada rodada. O servidor valida a técnica, Ki e recarga e resolve os dois lados conforme a iniciativa. Recarregar ou fechar a página não reinicia a batalha. Treinamento, descanso, itens e alterações de equipamento ficam bloqueados durante a luta.
 
-Você pode trocar a preferência a qualquer momento. Ao escolher **Automático** durante uma luta comum, o mesmo motor resolve as rodadas restantes, preservando recursos e consumíveis já usados. Bosses e provas continuam manuais mesmo se a preferência mudar. A recompensa só é concedida quando a batalha termina, em uma única transação.
+Você pode trocar a preferência a qualquer momento. Ao escolher **Automático** durante uma luta comum, o mesmo motor resolve as rodadas restantes, preservando recursos e consumíveis já usados. Bosses e provas exigem uma primeira vitória manual; depois, o jogador pode usar automático ou continuar no manual. Cada variante heroica exige sua própria vitória. A recompensa só é concedida quando a batalha termina, em uma única transação.
+
+Durante uma batalha pendente, o menu mantém o jogador na seção atual e mostra um aviso ao tentar sair. Recarregar retoma diretamente a tela de combate; a luta continua salva no servidor.
 
 `characters.combat_mode` armazena a preferência; `active_battles` guarda o estado privado e serializável de uma única batalha por personagem. A API retorna somente a projeção necessária para exibir os recursos, técnicas e eventos. `combat.mode` aceita um modo; `battle.turn` aceita o ID da batalha, a rodada esperada e o ID da técnica. A rodada esperada e a chave de idempotência impedem que requisições simultâneas avancem o mesmo turno duas vezes.
 
@@ -161,4 +163,4 @@ A arte está incluída no projeto. O prompt, a origem e a organização dos asse
 
 ## Arena 2D
 
-A batalha possui dois lutadores em sprites de jogo, cenários por área e animações ligadas aos eventos do servidor. O modo manual permite escolher técnicas; o automático reproduz a luta. Há velocidade 2x, pular e rever, sem repetir recompensas. A interface respeita a preferência de movimento reduzido. Consulte [a arquitetura e as artes da arena](docs/battle-arena.md).
+A batalha possui sprites de jogo, cenários por área, HUD compacta, ordem de turnos e comandos integrados à parte inferior. Os efeitos acompanham os eventos do servidor. As velocidades 1x/2x/3x persistem no navegador; pular e rever não repetem recompensas. A interface respeita movimento reduzido. Consulte [a arquitetura e as artes da arena](docs/battle-arena.md).

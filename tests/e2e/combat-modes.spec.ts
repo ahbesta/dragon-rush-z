@@ -1,3 +1,4 @@
+import { openBattleCommands } from "./turn-menu";
 import { test, expect } from "./browser-test";
 import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
@@ -69,8 +70,10 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   const initial = await state(page);
   expect(initial.character).toMatchObject({ xp: 0, zeni: 50 });
   expect(initial.latestBattle).toBeNull();
+  await openBattleCommands(battle, "Técnicas");
   await battle.getByRole("button", { name: "Usar Chute", exact: true }).click();
   await expect(battle.getByText("Rodada 2", { exact: true })).toBeVisible();
+  await openBattleCommands(battle, "Técnicas");
   await expect(battle.getByRole("button", { name: "Usar Chute", exact: true })).toBeDisabled();
   await expect(battle.getByText("Recarga: 1 rodada(s)")).toBeVisible();
   const second = await state(page);
@@ -82,7 +85,11 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await expect(battle.getByText("Rodada 2", { exact: true })).toBeVisible();
   expect((await state(page)).activeBattle).toEqual(second.activeBattle);
   await go(page, "Treinamento");
-  await expect(page.getByRole("button", { name: /Iniciar treinamento/ })).toBeDisabled();
+  const locked = page.getByRole("dialog", { name: "O combate ainda não acabou!" });
+  await expect(locked).toBeVisible();
+  await expect(locked).toContainText("Treinamento");
+  await expect(page.getByRole("button", { name: /Iniciar treinamento/ })).toHaveCount(0);
+  await locked.getByRole("button", { name: "Voltar ao combate", exact: true }).click();
   await expect(battle).toBeVisible();
   const forged = await page.request.post("/api/game/actions", {
     headers: origin,
@@ -107,13 +114,18 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
     },
   });
   expect(stale.status()).toBe(409);
+  await openBattleCommands(battle);
   await battle.getByRole("button", { name: "Usar Soco", exact: true }).click();
   await expect(battle.getByText("Rodada 3", { exact: true })).toBeVisible();
+  await openBattleCommands(battle, "Técnicas");
   await expect(battle.getByRole("button", { name: "Usar Chute", exact: true })).toBeEnabled();
   const beforeAuto = await state(page);
   await automatic.click();
   await expect(page.getByRole("heading", { name: "Vitória!", exact: true })).toBeVisible();
   await expect(battle).toHaveCount(0);
+  await go(page, "Treinamento");
+  await expect(page.getByRole("heading", { name: "Treinamento", exact: true })).toBeVisible();
+  await go(page, "Batalhar");
   let snapshot = await state(page);
   expect(snapshot.activeBattle).toBeNull();
   expect(snapshot.character).toMatchObject({ combatMode: "automatic", xp: 36, zeni: 66 });
@@ -145,14 +157,19 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await page.getByRole("button", { name: /Montanhas/ }).click();
   await page.locator(".enemy-row").getByRole("button", { name: "Batalhar", exact: true }).click();
   await expect(battle).toBeVisible();
+  await openBattleCommands(battle, "Técnicas");
   await battle.getByRole("button", { name: "Usar Rajada de Ki", exact: true }).click();
   await expect(battle.getByText("Rodada 2", { exact: true })).toBeVisible();
   expect((await state(page)).activeBattle?.playerKi).toBe(0);
+  await openBattleCommands(battle, "Técnicas");
   await expect(
     battle.getByRole("button", { name: "Usar Rajada de Ki", exact: true }),
   ).toBeDisabled();
-  await battle.getByRole("button", { name: "Usar Soco", exact: true }).click();
+  await openBattleCommands(battle);
+  // Guard keeps the opponent alive while validating Ki exhaustion; a critical punch could finish it.
+  await battle.getByRole("button", { name: /^Defender/ }).click();
   await expect(battle.getByText("Rodada 3", { exact: true })).toBeVisible();
+  await openBattleCommands(battle, "Técnicas");
   await expect(battle.getByText("Ki insuficiente", { exact: true })).toBeVisible();
   await page.screenshot({ path: ".local/screenshots/manual-combat-mobile.png", fullPage: true });
   for (const width of [320, 390, 768, 1440]) {
@@ -163,6 +180,7 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   }
   for (let turns = 0; turns < 10 && (await state(page)).activeBattle; turns++) {
     const current = (await state(page)).activeBattle!;
+    await openBattleCommands(battle);
     await battle.getByRole("button", { name: "Usar Soco", exact: true }).click();
     await expect
       .poll(async () => (await state(page)).activeBattle?.round ?? 99)

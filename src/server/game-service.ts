@@ -5,6 +5,7 @@ import { deriveBuildStats } from "@/game/attributes";
 import { xpRequired } from "@/game/progression";
 import { unmetRequirements } from "@/game/requirements";
 import { createStrategicCombat, advanceStrategicCombat } from "@/game/strategic-combat";
+import { requiresManualCombat } from "@/game/combat-access";
 import { advanceQuests, defeatLoss, itemRecovery } from "@/game/economy";
 import { buildAttributes, emptyAllocation } from "@/game/builds";
 import { statsFor, upgradeCharacter, grantExperience } from "./character-rules";
@@ -284,15 +285,15 @@ export async function executeAction(
         if (
           active &&
           input.mode === "automatic" &&
-          !(active.state.version === 2 && active.state.definition.boss)
+          !requiresManualCombat(active.state.definition, character.flags)
         ) {
           await completeBattle(finishCombat(active.state, random), active.state.strategic?.used);
         } else {
           result.message =
             input.mode === "manual"
               ? "Combate manual selecionado. Você escolhe cada técnica."
-              : active?.state.definition.boss
-                ? "Automático selecionado para o farm. Este desafio deve ser concluído manualmente."
+              : active && requiresManualCombat(active.state.definition, character.flags)
+                ? "Automático selecionado. Vença este desafio manualmente uma vez para liberar o farm automático."
                 : "Combate automático selecionado.";
         }
         break;
@@ -514,7 +515,7 @@ export async function executeAction(
             maxUses: 1,
           },
         });
-        if (character.combatMode === "manual" || enemy.boss) {
+        if (character.combatMode === "manual" || requiresManualCombat(enemy, character.flags)) {
           await tx.insert(s.activeBattles).values({
             id: combat.id,
             characterId: character.id,
@@ -757,7 +758,7 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
           createdAt: new Date(h.createdAt).toISOString(),
         })),
         latestBattle: battles[0]?.result ?? null,
-        activeBattle: active[0] ? presentCombat(active[0].state) : null,
+        activeBattle: active[0] ? presentCombat(active[0].state, character.flags) : null,
       };
     },
     { isolationLevel: "repeatable read", accessMode: "read only" },

@@ -154,7 +154,7 @@ test("jornada real: conta, build, treino, campanha, vila, boss manual e ranking"
   await go(page, "Missões");
   await page.getByRole("button", { name: "Desafiar Yamcha", exact: true }).click();
   await expect(page.getByRole("region", { name: "Combate manual", exact: true })).toBeVisible();
-  await expect(page.locator(".rpg-intent")).toBeVisible();
+  await expect(page.locator(".combat-timeline-caption")).toContainText("Yamcha:");
   snapshot = await state();
   expect(snapshot.activeBattle!.manualOnly).toBe(true);
   await page.screenshot({ path: ".local/screenshots/classic-yamcha-desktop.png", fullPage: true });

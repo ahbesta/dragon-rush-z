@@ -48,6 +48,7 @@ test("campanha avançada, vilas, fabricação, comparação, ranking e arena cl�
         ki: stats.maxKi,
         ratedPower: stats.powerLevel,
         campaignOrder: 6,
+        combatMode: "manual",
         zeni: 3000,
         flags: [
           ...seedCatalog.quests.map((q) => `quest:${q.id}`),
@@ -168,7 +169,12 @@ test("campanha avançada, vilas, fabricação, comparação, ranking e arena cl�
     await page.reload();
     await go("Batalhar");
     await expect(page.locator(".battle-arena")).toBeVisible();
-    await expect(page.locator('.battle-arena img[src*="robo-pirata"]')).toHaveCount(1);
+    await expect(
+      page.locator('.battle-arena .arena-fighter.enemy img[src*="robo-pirata"]'),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('.battle-arena .arena-combat-timeline img[src*="robo-pirata"]'),
+    ).toHaveCount(1);
     await page
       .locator(".battle-arena")
       .screenshot({ path: ".local/screenshots/classic-robot-arena.png" });

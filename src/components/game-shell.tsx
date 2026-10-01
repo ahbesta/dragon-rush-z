@@ -58,6 +58,7 @@ import { SettlementPanel } from "./settlement-panel";
 import { RankingPanel } from "./ranking-panel";
 import { PreparationPanel } from "./preparation-panel";
 import { HeroicPanel } from "./enemy-intel";
+import { BattleNavigationNotice } from "./battle-navigation-notice";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -87,7 +88,8 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const arenaAnchor = useRef<HTMLDivElement>(null);
   const lastArrival = useRef<string | null>(null);
   const consumedAnimation = useCallback(() => setAnimatedBattleId(null), []);
-  const [section, setSection] = useState<Section>("character");
+  const [section, setSection] = useState<Section>(initial.activeBattle ? "battle" : "character");
+  const [blockedDestination, setBlockedDestination] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -125,6 +127,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const adopt = useCallback((next: GameSnapshot) => {
     setTime({ server: new Date(next.serverTime).getTime(), client: Date.now() });
     setSnapshot(next);
+    if (next.activeBattle) {
+      setSection((current) => (current === "explore" || current === "battle" ? current : "battle"));
+    } else {
+      setBlockedDestination(null);
+    }
   }, []);
   useEffect(() => {
     const timer = setInterval(() => {
@@ -268,6 +275,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     });
   }
   function go(next: Section, { scrollToTop = true }: { scrollToTop?: boolean } = {}) {
+    if (snapshot.activeBattle && next !== section) {
+      setMobileOpen(false);
+      setBlockedDestination(sections.find((candidate) => candidate.id === next)!.label);
+      return;
+    }
     setSection(next);
     setMobileOpen(false);
     if (scrollToTop) {
@@ -338,8 +350,15 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               href="/perfil"
               prefetch={false}
               className="nav-item nav-profile"
+              onClick={(event) => {
+                if (!snapshot.activeBattle) return;
+                event.preventDefault();
+                setMobileOpen(false);
+                setBlockedDestination("Perfil");
+              }}
               onNavigate={(event) => {
                 event.preventDefault();
+                if (snapshot.activeBattle) return;
                 // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Perfil precisa de uma nova leitura da sessão e do personagem.
                 window.location.assign("/perfil");
               }}
@@ -351,6 +370,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               className="nav-item nav-signout"
               aria-label="Sair da conta"
               onClick={async () => {
+                if (snapshot.activeBattle) {
+                  setMobileOpen(false);
+                  setBlockedDestination("Sair da conta");
+                  return;
+                }
                 await authClient.signOut();
                 router.push("/login");
                 router.refresh();
@@ -1193,6 +1217,15 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
         <div className="action-indicator" role="status">
           <ActionIcon className="spin" size={16} /> Processando ação…
         </div>
+      )}
+      {blockedDestination && (
+        <BattleNavigationNotice
+          destination={blockedDestination}
+          onClose={() => {
+            setBlockedDestination(null);
+            requestAnimationFrame(() => arenaAnchor.current?.focus({ preventScroll: true }));
+          }}
+        />
       )}
     </div>
   );

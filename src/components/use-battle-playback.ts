@@ -1,6 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BattleFrame, BattlePresentation } from "@/lib/battle-presentation";
+import {
+  battleSpeedKey,
+  nextBattleSpeed,
+  parseBattleSpeed,
+  type BattleSpeed,
+} from "@/lib/battle-preferences";
 
 export function useBattlePlayback(model: BattlePresentation, autoplay: boolean) {
   const [visual, setVisual] = useState(() => ({
@@ -12,8 +18,8 @@ export function useBattlePlayback(model: BattlePresentation, autoplay: boolean) 
     cycle: 0,
     duration: 850,
   }));
-  const [speed, setSpeed] = useState(1);
-  const speedRef = useRef(1);
+  const [speed, setSpeed] = useState<BattleSpeed>(1);
+  const speedRef = useRef<BattleSpeed>(1);
   const reduced = useRef(false);
   const initialized = useRef(false);
   const seen = useRef(-1);
@@ -69,6 +75,13 @@ export function useBattlePlayback(model: BattlePresentation, autoplay: boolean) 
     [settle],
   );
   useEffect(() => {
+    try {
+      speedRef.current = parseBattleSpeed(window.localStorage.getItem(battleSpeedKey));
+    } catch {
+      // Storage can be unavailable in private or restricted browsers.
+      speedRef.current = 1;
+    }
+    const preferenceFrame = requestAnimationFrame(() => setSpeed(speedRef.current));
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const change = () => {
       reduced.current = media.matches;
@@ -80,6 +93,7 @@ export function useBattlePlayback(model: BattlePresentation, autoplay: boolean) 
     reduced.current = media.matches;
     media.addEventListener("change", change);
     return () => {
+      cancelAnimationFrame(preferenceFrame);
       media.removeEventListener("change", change);
       clear();
       // O Strict Mode repete os efeitos de montagem no desenvolvimento.
@@ -123,8 +137,13 @@ export function useBattlePlayback(model: BattlePresentation, autoplay: boolean) 
     next();
   }, [clear, next, settle]);
   const toggleSpeed = useCallback(() => {
-    speedRef.current = speedRef.current === 1 ? 2 : 1;
+    speedRef.current = nextBattleSpeed(speedRef.current);
     setSpeed(speedRef.current);
+    try {
+      window.localStorage.setItem(battleSpeedKey, String(speedRef.current));
+    } catch {
+      // Keep the selected speed for this battle even if storage is blocked.
+    }
   }, []);
   return { ...visual, speed, skip, replay, toggleSpeed };
 }

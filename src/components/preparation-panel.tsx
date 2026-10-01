@@ -121,7 +121,8 @@ export function PreparationPanel({
           </label>
         </div>
         <small>
-          Poções são realmente gastas, inclusive em derrotas. Bosses e provas continuam manuais.
+          Poções são realmente gastas, inclusive em derrotas. O primeiro desafio de cada boss é
+          manual; vitórias liberam o automático para o farm.
         </small>
       </div>
     </section>

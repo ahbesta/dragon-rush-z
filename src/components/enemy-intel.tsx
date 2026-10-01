@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Flame, Swords } from "lucide-react";
 import type { EnemyDefinition, GameSnapshot } from "@/game/types";
 import type { ActionPayload } from "@/game/validation";
+import { requiresManualCombat } from "@/game/combat-access";
 import { unmetRequirements } from "@/game/requirements";
 import { EnemyPortrait } from "./enemy-portrait";
 export function EnemyDrops({
@@ -90,7 +91,12 @@ export function HeroicPanel({
                   disabled={busy || reasons.length > 0 || c.hp <= 0}
                   onClick={() => onAction({ action: "boss", enemyId: e.id })}
                 >
-                  <Swords size={15} /> {reasons.length ? reasons.join(" · ") : "Desafiar · manual"}
+                  <Swords size={15} />{" "}
+                  {reasons.length
+                    ? reasons.join(" · ")
+                    : requiresManualCombat(e, c.flags) || c.combatMode === "manual"
+                      ? "Desafiar · manual"
+                      : "Desafiar · automático"}
                 </button>
               </article>
             );

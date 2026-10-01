@@ -1,5 +1,6 @@
 import { CombatRuleError, createCombat, type CombatInput } from "./combat";
 import { itemRecovery, rewardMultiplier } from "./economy";
+import { requiresManualCombat } from "./combat-access";
 import type {
   ActiveBattle,
   AutoItems,
@@ -95,7 +96,10 @@ function itemAvailable(s: CombatState, itemId: string) {
     (st.inventory.find((i) => i.itemId === itemId)?.quantity ?? 0) > 0
   );
 }
-export function presentStrategicCombat(s: CombatState): ActiveBattle {
+export function presentStrategicCombat(
+  s: CombatState,
+  flags: readonly string[] = [],
+): ActiveBattle {
   const techniques = [...s.player.techniques.filter((t) => t.id !== "soco"), s.fallback];
   return {
     version: 2,
@@ -109,7 +113,7 @@ export function presentStrategicCombat(s: CombatState): ActiveBattle {
     enemyKi: s.enemy.ki,
     enemyMaxHp: s.enemy.stats.maxHp,
     enemyMaxKi: s.enemy.stats.maxKi,
-    manualOnly: s.definition.boss,
+    manualOnly: requiresManualCombat(s.definition, flags),
     initiative: s.strategic!.initiative,
     intent: s.strategic!.intent,
     statuses: { player: s.player.statuses ?? [], enemy: s.enemy.statuses ?? [] },

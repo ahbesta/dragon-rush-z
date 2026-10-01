@@ -1,3 +1,4 @@
+import { openBattleCommands } from "./turn-menu";
 import { test, expect } from "./browser-test";
 import { type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
@@ -137,6 +138,7 @@ for (const section of ["Batalhar", "Explorar"]) {
       for (let turn = 0; turn < 12; turn++) {
         const current = (await (await page.request.get("/api/game")).json()).snapshot;
         if (!current.activeBattle) break;
+        await openBattleCommands(arena);
         await clickWithoutScrollReset(
           page,
           arena.getByRole("button", { name: "Usar Soco", exact: true }),

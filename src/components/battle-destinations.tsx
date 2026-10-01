@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { ArrowRight, Compass, LockKeyhole, Map, Search, Swords, X } from "lucide-react";
 import type { GameSnapshot } from "@/game/types";
 import type { ActionPayload } from "@/game/validation";
+import { requiresManualCombat } from "@/game/combat-access";
 import { unmetRequirements } from "@/game/requirements";
 import { Scene } from "./game-primitives";
 import { EnemyPortrait } from "./enemy-portrait";
@@ -67,7 +68,11 @@ export function BattleDestinations({
           <h2>{area.name}</h2>
           <p>{area.description}</p>
         </div>
-        <button className="button secondary" onClick={() => dialog.current?.showModal()}>
+        <button
+          className="button secondary"
+          disabled={Boolean(snapshot.activeBattle)}
+          onClick={() => dialog.current?.showModal()}
+        >
           <Map size={17} /> Trocar área
         </button>
       </div>
@@ -179,8 +184,8 @@ export function BattleDestinations({
             {snapshot.activeBattle
               ? "Conclua a batalha em andamento na arena abaixo."
               : mode === "explore"
-                ? "Explore para encontrar um inimigo comum ou escolha diretamente quem enfrentar. Bosses e provas são manuais."
-                : "Escolha um inimigo para entrar na arena. Bosses e provas são sempre manuais."}
+                ? "Explore para encontrar um inimigo comum ou escolha diretamente quem enfrentar. O primeiro desafio de cada boss é manual. Depois, você pode usar o automático."
+                : "Escolha um inimigo para entrar na arena. Vença cada boss manualmente uma vez para liberar seu farm automático."}
           </p>
         )}
         <div className="enemy-list">
@@ -219,7 +224,14 @@ export function BattleDestinations({
                     )
                   }
                 >
-                  {wait ? `${wait}s` : enemy.boss ? "Desafiar · manual" : "Batalhar"}
+                  {wait
+                    ? `${wait}s`
+                    : enemy.boss
+                      ? requiresManualCombat(enemy, snapshot.character.flags) ||
+                        snapshot.character.combatMode === "manual"
+                        ? "Desafiar · manual"
+                        : "Desafiar · automático"
+                      : "Batalhar"}
                   <Swords size={14} />
                 </button>
                 <EnemyDrops enemy={enemy} snapshot={snapshot} />

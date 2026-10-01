@@ -272,7 +272,7 @@ const classicFighters = [
   "oficial-red-ribbon",
 ];
 for (const id of classicFighters) {
-  const filename = id === "pilaf" ? "pilaf-v2" : id;
+  const filename = `${id}-v2`;
   Object.assign(enemyArtwork, {
     [id]: {
       src: `/images/classic/${filename}.webp`,
@@ -287,7 +287,7 @@ for (const id of classicFighters) {
       alt: `Lutador: ${id.replaceAll("-", " ")}`,
       scale: 1,
       frames: 1,
-      frameWidth: id === "pilaf" ? 150 : 160,
+      frameWidth: 150,
     },
   });
 }
@@ -305,19 +305,28 @@ for (const id of [
   "castelo-rei",
 ]) {
   const art = {
-    src: `/images/classic-areas/${id}.webp`,
+    src: `/images/classic-areas/${id}-v2.webp`,
     alt: `Cenário de ${id.replaceAll("-", " ")}`,
     width: 1200,
-    height: 675,
+    height: [
+      "castelo-pilaf",
+      "kame-house",
+      "papaya",
+      "jingle",
+      "muscle-tower",
+      "cidade-oeste",
+    ].includes(id)
+      ? 400
+      : 534,
   };
   battleArenaArtwork[id] = art;
   Object.assign(areaArtwork, { [id]: art });
 }
 battleArenaArtwork["red-ribbon"] = {
-  src: "/images/classic-areas/red-ribbon-v2.webp",
+  src: "/images/classic-areas/red-ribbon-v3.webp",
   alt: "Quartel-general Red Ribbon",
   width: 1200,
-  height: 675,
+  height: 534,
 };
 Object.assign(areaArtwork, {
   "encontro-extra": areaArtwork.deserto,
