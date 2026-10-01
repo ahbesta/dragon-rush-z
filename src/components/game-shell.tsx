@@ -175,7 +175,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           (data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id &&
             data.snapshot.latestBattle)
         )
-          go("battle");
+          go("battle", { scrollToTop: false });
       }
       setNotice({ text: data.message ?? "Ação concluída.", error: false });
     } catch {
@@ -210,10 +210,10 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     });
   }
   const bossReasons = boss ? requirements(boss.requirements) : [];
-  function go(next: Section) {
+  function go(next: Section, { scrollToTop = true }: { scrollToTop?: boolean } = {}) {
     setSection(next);
     setMobileOpen(false);
-    window.scrollTo(0, 0);
+    if (scrollToTop) window.scrollTo(0, 0);
   }
   const trainingRule = catalog.policies.find((p) => p.id === "training");
   const restRule = catalog.policies.find((p) => p.id === "rest");
