@@ -26,7 +26,6 @@ import {
   Shield,
   Sparkles,
   Swords,
-  Target,
   Trophy,
   UserRound,
   X,
@@ -44,9 +43,8 @@ import {
   ItemEffects,
   ItemIcon,
   Meter,
-  Scene,
 } from "./game-primitives";
-import { BattleLog } from "./battle-log";
+import { BattleDestinations } from "./battle-destinations";
 import { CombatModeSelector } from "./combat-controls";
 import { BattleArena } from "./battle-arena";
 import { GameLobby } from "./game-lobby";
@@ -59,7 +57,7 @@ import { AdventurePanel } from "./adventure-panel";
 import { SettlementPanel } from "./settlement-panel";
 import { RankingPanel } from "./ranking-panel";
 import { PreparationPanel } from "./preparation-panel";
-import { EnemyDrops, HeroicPanel } from "./enemy-intel";
+import { HeroicPanel } from "./enemy-intel";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -83,6 +81,11 @@ type ApiResponse = {
 export function GameShell({ initial }: { initial: GameSnapshot }) {
   const [snapshot, setSnapshot] = useState(initial);
   const [animatedBattleId, setAnimatedBattleId] = useState<string | null>(null);
+  const [lootRevealId, setLootRevealId] = useState<string | null>(null);
+  const [arenaArrivalId, setArenaArrivalId] = useState<string | null>(null);
+  const [retainedPageHeight, setRetainedPageHeight] = useState<number | undefined>();
+  const arenaAnchor = useRef<HTMLDivElement>(null);
+  const lastArrival = useRef<string | null>(null);
   const consumedAnimation = useCallback(() => setAnimatedBattleId(null), []);
   const [section, setSection] = useState<Section>("character");
   const [busy, setBusy] = useState(false);
@@ -92,11 +95,33 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     server: new Date(initial.serverTime).getTime(),
     client: Date.now(),
   }));
-  const [areaId, setAreaId] = useState(initial.catalog.areas[0]?.id ?? "");
+  const [areaId, setAreaId] = useState(() => {
+    const battle = initial.activeBattle ?? initial.latestBattle;
+    const enemy = initial.catalog.enemies.find((e) => e.id === battle?.enemyId);
+    return (
+      battle?.areaId ??
+      initial.catalog.encounters.find((e) => e.enemyId === (enemy?.heroicOf ?? battle?.enemyId))
+        ?.areaId ??
+      initial.catalog.areas[0]?.id ??
+      ""
+    );
+  });
   const busyRef = useRef(false);
   const refreshGeneration = useRef(0);
   const retryRef = useRef<{ payload: ActionPayload; key: string } | null>(null);
   const router = useRouter();
+  useEffect(() => {
+    if (!arenaArrivalId || lastArrival.current === arenaArrivalId || !arenaAnchor.current) return;
+    lastArrival.current = arenaArrivalId;
+    const arena = arenaAnchor.current;
+    arena.focus({ preventScroll: true });
+    arena.scrollIntoView({
+      block: "start",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+    });
+  }, [arenaArrivalId]);
   const adopt = useCallback((next: GameSnapshot) => {
     setTime({ server: new Date(next.serverTime).getTime(), client: Date.now() });
     setSnapshot(next);
@@ -175,11 +200,16 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
       }
       retryRef.current = null;
       if (data.snapshot) {
+        // Replacing commands with a shorter result must not clamp the current viewport upward.
+        if (snapshot.activeBattle && !data.snapshot.activeBattle)
+          setRetainedPageHeight(window.scrollY + window.innerHeight);
         if (
           data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id &&
           data.snapshot.latestBattle
-        )
+        ) {
           setAnimatedBattleId(data.snapshot.latestBattle.id);
+          setLootRevealId(data.snapshot.latestBattle.id);
+        }
         adopt(data.snapshot);
         if (
           (data.snapshot.activeBattle?.id !== snapshot.activeBattle?.id &&
@@ -188,6 +218,18 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
             data.snapshot.latestBattle)
         )
           go("battle", { scrollToTop: false });
+        if (
+          payload.action === "battle" ||
+          payload.action === "boss" ||
+          payload.action === "explore"
+        ) {
+          setRetainedPageHeight(undefined);
+          const battleArea =
+            data.snapshot.activeBattle?.areaId ?? data.snapshot.latestBattle?.areaId;
+          if (battleArea) setAreaId(battleArea);
+          const destination = data.snapshot.activeBattle?.id ?? data.snapshot.latestBattle?.id;
+          if (destination) setArenaArrivalId(destination);
+        }
       }
       setNotice({ text: data.message ?? "Ação concluída.", error: false });
     } catch {
@@ -214,7 +256,6 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const blocked = busy || Boolean(activity) || Boolean(snapshot.activeBattle);
   const combatBlocked = blocked || battleWait > 0 || c.hp <= 0;
   const currentSection = sections.find((s) => s.id === section)!;
-  const selectedArea = catalog.areas.find((a) => a.id === areaId) ?? catalog.areas[0];
   const boss = catalog.enemies.find((e) => e.id === "piccolo-daimao");
   function requirements(req: Requirements) {
     return unmetRequirements(req, {
@@ -224,18 +265,20 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
       flags: c.flags,
     });
   }
-  const bossReasons = boss ? requirements(boss.requirements) : [];
   function go(next: Section, { scrollToTop = true }: { scrollToTop?: boolean } = {}) {
     setSection(next);
     setMobileOpen(false);
-    if (scrollToTop) window.scrollTo(0, 0);
+    if (scrollToTop) {
+      setRetainedPageHeight(undefined);
+      window.scrollTo(0, 0);
+    }
   }
   const trainingRule = catalog.policies.find((p) => p.id === "training");
   const restRule = catalog.policies.find((p) => p.id === "rest");
   const ActionIcon = busy ? LoaderCircle : ArrowRight;
 
   return (
-    <div className="game-layout">
+    <div className="game-layout" style={{ minHeight: retainedPageHeight }}>
       <div className="game-body">
         <a className="skip-to-game" href="#game-content">
           Ir para o jogo
@@ -386,18 +429,38 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               </button>
             </div>
           )}
+          {(section === "battle" || section === "explore") && (
+            <BattleDestinations
+              snapshot={snapshot}
+              areaId={areaId}
+              onArea={setAreaId}
+              mode={section}
+              busy={blocked}
+              wait={battleWait}
+              onAction={act}
+              onVillage={() => go("settlements")}
+            />
+          )}
           {(snapshot.activeBattle ||
             ((section === "battle" || section === "explore") && snapshot.latestBattle)) && (
-            <BattleArena
-              key={snapshot.activeBattle?.id ?? snapshot.latestBattle!.id}
-              snapshot={snapshot}
-              busy={busy}
-              onAction={act}
-              autoplay={
-                animatedBattleId === (snapshot.activeBattle?.id ?? snapshot.latestBattle?.id)
-              }
-              onAutoplayConsumed={consumedAnimation}
-            />
+            <div
+              ref={arenaAnchor}
+              className="battle-arena-anchor"
+              tabIndex={-1}
+              aria-label="Arena de combate"
+            >
+              <BattleArena
+                key={snapshot.activeBattle?.id ?? snapshot.latestBattle!.id}
+                snapshot={snapshot}
+                busy={busy}
+                onAction={act}
+                autoplay={
+                  animatedBattleId === (snapshot.activeBattle?.id ?? snapshot.latestBattle?.id)
+                }
+                onAutoplayConsumed={consumedAnimation}
+                revealLoot={lootRevealId === snapshot.latestBattle?.id}
+              />
+            </div>
           )}
           {activity && (
             <div className="activity-banner">
@@ -663,7 +726,14 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                       <br />
                       Treine. Prepare-se. Enfrente seu destino.
                     </p>
-                    <button className="button boss-button" onClick={() => go("battle")}>
+                    <button
+                      className="button boss-button"
+                      onClick={() => {
+                        const area = catalog.encounters.find((e) => e.enemyId === boss.id)?.areaId;
+                        if (area) setAreaId(area);
+                        go("battle");
+                      }}
+                    >
                       Ver desafio
                       <ArrowRight size={17} />
                     </button>
@@ -778,181 +848,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           )}
 
           {(section === "explore" || section === "battle") && (
-            <>
-              <div className="world-heading">
-                <Compass size={17} />
-                <span>PLANETA TERRA</span>
-                <small>
-                  {
-                    catalog.areas.filter(
-                      (a) =>
-                        a.minLevel <= c.level && requirements(a.requirements ?? {}).length === 0,
-                    ).length
-                  }{" "}
-                  / {catalog.areas.length} ÁREAS DISPONÍVEIS
-                </small>
-              </div>
-              <div className="area-grid">
-                {catalog.areas.map((area) => {
-                  const locked =
-                    c.level < area.minLevel || requirements(area.requirements ?? {}).length > 0;
-                  return (
-                    <button
-                      key={area.id}
-                      className={`area-card ${area.id === selectedArea?.id ? "selected" : ""} ${locked ? "locked" : ""}`}
-                      onClick={() => setAreaId(area.id)}
-                    >
-                      <Scene kind={area.id} />
-                      <span className="area-level">
-                        {locked ? <LockKeyhole size={12} /> : <Compass size={12} />} NÍVEL{" "}
-                        {area.minLevel}+
-                      </span>
-                      <div>
-                        <h3>{area.name}</h3>
-                        <p>{area.description}</p>
-                        <span>
-                          {locked ? "Área bloqueada" : "Exploração disponível"}
-                          <ChevronRight size={14} />
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedArea && (
-                <section className="panel encounter-panel">
-                  <div className="section-title">
-                    <h3>
-                      <Target size={20} /> {selectedArea.name}
-                    </h3>
-                    {section === "explore" && (
-                      <button
-                        className="button primary small"
-                        disabled={
-                          combatBlocked ||
-                          c.level < selectedArea.minLevel ||
-                          requirements(selectedArea.requirements ?? {}).length > 0 ||
-                          !catalog.encounters.some(
-                            (e) =>
-                              e.areaId === selectedArea.id &&
-                              !catalog.enemies.find((enemy) => enemy.id === e.enemyId)?.boss,
-                          )
-                        }
-                        onClick={() => act({ action: "explore", areaId: selectedArea.id })}
-                      >
-                        <Compass size={16} />
-                        {battleWait ? `Aguarde ${battleWait}s` : "Explorar e batalhar"}
-                      </button>
-                    )}
-                  </div>
-                  <p className="panel-description">
-                    {c.combatMode === "manual"
-                      ? "Encontre um adversário e escolha suas técnicas a cada rodada."
-                      : section === "explore"
-                        ? "Ao explorar, você encontra um inimigo comum da área. Bosses e provas são desafios manuais."
-                        : "Escolha um adversário e suas técnicas serão usadas na ordem definida."}
-                  </p>
-                  <div className="enemy-list">
-                    {catalog.encounters
-                      .filter((e) => e.areaId === selectedArea.id)
-                      .map((encounter) => {
-                        const enemy = catalog.enemies.find((e) => e.id === encounter.enemyId)!;
-                        return (
-                          <div className="enemy-row" key={enemy.id}>
-                            <EnemyPortrait enemyId={enemy.id} artId={enemy.artId} />
-                            <div className="enemy-info">
-                              <strong>{enemy.name}</strong>
-                              <small>
-                                Nível {enemy.level} · PL {enemy.powerLevel} · {enemy.maxHp} HP
-                              </small>
-                            </div>
-                            <div className="enemy-rewards">
-                              <span>+{enemy.xpReward} XP</span>
-                              <small>◈ {enemy.zeniReward} Zeni</small>
-                            </div>
-                            {(section === "battle" || enemy.boss) && (
-                              <button
-                                className="button small secondary"
-                                disabled={
-                                  combatBlocked ||
-                                  c.level < selectedArea.minLevel ||
-                                  requirements(selectedArea.requirements ?? {}).length > 0 ||
-                                  requirements(enemy.requirements).length > 0
-                                }
-                                onClick={() =>
-                                  act(
-                                    enemy.boss
-                                      ? { action: "boss", enemyId: enemy.id }
-                                      : {
-                                          action: "battle",
-                                          areaId: selectedArea.id,
-                                          enemyId: enemy.id,
-                                        },
-                                  )
-                                }
-                              >
-                                {battleWait
-                                  ? `${battleWait}s`
-                                  : enemy.boss
-                                    ? "Desafiar · manual"
-                                    : "Batalhar"}
-                                <Swords size={14} />
-                              </button>
-                            )}
-                            <EnemyDrops enemy={enemy} snapshot={snapshot} />
-                          </div>
-                        );
-                      })}
-                  </div>
-                </section>
-              )}
-              {section === "battle" && boss && (
-                <section className="boss-arena">
-                  <EnemyPortrait
-                    enemyId={boss.id}
-                    className="boss-arena-art"
-                    sizes="(max-width: 700px) 100px, 220px"
-                  />
-                  <div>
-                    <span className="eyebrow">BOSS • FINAL DA CAMPANHA CLÁSSICA</span>
-                    <h2>{boss.name}</h2>
-                    <p>{boss.description}</p>
-                    <div className="boss-arena-stats">
-                      <span>
-                        <Heart size={14} /> {boss.maxHp} HP
-                      </span>
-                      <span>
-                        <Zap size={14} /> PL {boss.powerLevel}
-                      </span>
-                      <span>
-                        <Trophy size={14} /> +{boss.xpReward} XP / {boss.zeniReward} Zeni
-                      </span>
-                    </div>
-                    {bossReasons.length > 0 && (
-                      <small className="boss-requirements">
-                        <LockKeyhole size={13} /> {bossReasons.join(" · ")}
-                      </small>
-                    )}
-                  </div>
-                  <button
-                    className="button boss-button"
-                    disabled={combatBlocked || bossReasons.length > 0}
-                    onClick={() => act({ action: "boss", enemyId: boss.id })}
-                  >
-                    {bossReasons.length ? <LockKeyhole size={16} /> : <Swords size={16} />}{" "}
-                    Enfrentar boss
-                  </button>
-                </section>
-              )}
-              <HeroicPanel snapshot={snapshot} busy={combatBlocked} onAction={act} />
-              {snapshot.latestBattle && !snapshot.activeBattle && (
-                <BattleLog
-                  key={snapshot.latestBattle.id}
-                  battle={snapshot.latestBattle}
-                  snapshot={snapshot}
-                />
-              )}
-            </>
+            <HeroicPanel snapshot={snapshot} busy={combatBlocked} onAction={act} />
           )}
 
           {section === "inventory" && (

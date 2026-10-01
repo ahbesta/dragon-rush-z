@@ -1,4 +1,5 @@
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./browser-test";
+import { type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDatabase } from "../../src/server/db/client";
@@ -25,7 +26,7 @@ test.afterAll(async () => {
 async function go(page: Page, label: string) {
   const menu = page.getByRole("button", { name: "Abrir menu", exact: true });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.locator("#game-navigation").getByRole("button", { name: label, exact: true }).click();
 }
 
 async function clickWithoutScrollReset(
@@ -78,7 +79,10 @@ async function clickWithoutScrollReset(
 }
 
 for (const width of [390, 1440]) {
-  test(`combates manual e automático mantêm o scroll em ${width}px`, async ({ page, baseURL }) => {
+  test(`início vai à arena e conclusão preserva scroll em ${width}px`, async ({
+    page,
+    baseURL,
+  }) => {
     const email = `battle-scroll-${randomUUID()}@example.test`;
     emails.push(email);
     await page.setViewportSize({ width, height: 700 });
@@ -123,6 +127,8 @@ for (const width of [390, 1440]) {
     if (await arena.getByRole("button", { name: "Pular animação", exact: true }).isVisible()) {
       await arena.getByRole("button", { name: "Pular animação", exact: true }).click();
     }
+    const dismissDrops = arena.getByRole("button", { name: "Fechar drops", exact: true });
+    if (await dismissDrops.isVisible()) await dismissDrops.click();
     await expect(arena.locator(".arena-outcome")).toBeVisible();
 
     await database.db
@@ -137,10 +143,18 @@ for (const width of [390, 1440]) {
       .locator(".enemy-row")
       .filter({ hasText: "Lobo" })
       .getByRole("button", { name: "Batalhar", exact: true });
-    await clickWithoutScrollReset(page, fight, async () => {
-      await expect(arena).not.toHaveAttribute("data-battle-id", previousId!);
-      await expect(arena).toHaveClass(/arena-completed/);
-    });
+    await fight.click();
+    await expect(arena).not.toHaveAttribute("data-battle-id", previousId!);
+    await expect(arena).toHaveClass(/arena-completed/);
+    await expect
+      .poll(() =>
+        page
+          .locator(".battle-arena-anchor")
+          .evaluate((el) => Math.round(el.getBoundingClientRect().top)),
+      )
+      .toBe(20);
+    await expect(page.locator(".battle-arena-anchor")).toBeFocused();
+    await expect(arena.locator(".battle-result .combat-log")).toBeVisible();
 
     // Explicit menu navigation still opens the selected page at its beginning.
     await go(page, "Inventário");

@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./browser-test";
+import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
@@ -23,7 +24,7 @@ test.afterAll(async () => {
 async function go(page: Page, label: string) {
   const menu = page.getByRole("button", { name: "Abrir menu", exact: true });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.locator("#game-navigation").getByRole("button", { name: label, exact: true }).click();
 }
 
 async function loadedImages(page: Page, selector: string, count: number) {
@@ -135,13 +136,17 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
     await page.screenshot({ path: `.local/screenshots/art-training-${width}.png`, fullPage: true });
 
     await go(page, "Explorar");
+    await page.getByRole("button", { name: "Trocar área", exact: true }).click();
+    await page.getByRole("button", { name: /Todas as áreas/ }).click();
     await loadedImages(page, ".area-card .illustrated-scene img", 16);
+    await page.getByRole("button", { name: "Fechar seleção de área" }).click();
     for (const [area, enemies] of [
       ["Floresta do Monte Paozu", 2],
       ["Montanhas do Monte Paozu", 1],
       ["Deserto de Yamcha", 2],
       ["QG Red Ribbon", 2],
     ] as const) {
+      await page.getByRole("button", { name: "Trocar área", exact: true }).click();
       await page
         .locator(".area-card")
         .filter({ has: page.getByRole("heading", { name: area, exact: true }) })
@@ -151,7 +156,7 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
     await page.screenshot({ path: `.local/screenshots/art-explore-${width}.png`, fullPage: true });
 
     await go(page, "Batalhar");
-    await loadedImages(page, ".boss-arena-art img", 1);
+    await loadedImages(page, ".battle-area-current .illustrated-scene img", 1);
     await page.screenshot({ path: `.local/screenshots/art-battle-${width}.png`, fullPage: true });
 
     await go(page, "Técnicas");

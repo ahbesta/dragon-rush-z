@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./browser-test";
+import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
@@ -30,7 +31,7 @@ async function state(page: Page): Promise<GameSnapshot> {
 async function go(page: Page, label: string) {
   const menu = page.getByRole("button", { name: "Abrir menu", exact: true });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.locator("#game-navigation").getByRole("button", { name: label, exact: true }).click();
 }
 async function action(page: Page, origin: string, payload: ActionPayload) {
   const response = await page.request.post("/api/game/actions", {
@@ -70,6 +71,7 @@ test("arena real: sprites, chute, Ki, replay sem recompensas, cenários e movime
   await action(page, baseURL!, { action: "combat.mode", mode: "manual" });
   await page.goto("/jogo");
   await go(page, "Batalhar");
+  await page.getByRole("button", { name: "Trocar área", exact: true }).click();
   await page.getByRole("button", { name: /Montanhas/ }).click();
   await page.locator(".enemy-row").getByRole("button", { name: "Batalhar", exact: true }).click();
   const arena = page.locator(".battle-arena");
@@ -248,6 +250,8 @@ test("arena real: sprites, chute, Ki, replay sem recompensas, cenários e movime
   await action(page, baseURL!, { action: "combat.mode", mode: "manual" });
   await page.reload();
   await go(page, "Batalhar");
+  await page.getByRole("button", { name: "Trocar área", exact: true }).click();
+  await page.getByRole("button", { name: /Floresta/ }).click();
   await page
     .locator(".enemy-row")
     .filter({ hasText: "Bandido" })

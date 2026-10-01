@@ -1,7 +1,15 @@
 "use client";
-import { useEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Image from "next/image";
-import { ChevronsRight, RotateCcw, SkipForward, Swords, UserRound, Zap } from "lucide-react";
+import {
+  ChevronsRight,
+  Package,
+  RotateCcw,
+  SkipForward,
+  Swords,
+  UserRound,
+  Zap,
+} from "lucide-react";
 import type { GameSnapshot } from "@/game/types";
 import type { ActionPayload } from "@/game/validation";
 import { presentBattleEvents, techniqueFxColor } from "@/lib/battle-presentation";
@@ -14,7 +22,8 @@ import {
 import { ArtworkImage } from "./artwork-image";
 import { Meter } from "./game-primitives";
 import { CombatTechniqueButtons } from "./combat-controls";
-import { CombatEventLog } from "./battle-log";
+import { BattleLog, CombatEventLog } from "./battle-log";
+import { BattleLootReveal } from "./battle-loot-reveal";
 import { useBattlePlayback } from "./use-battle-playback";
 
 function FighterSprite({
@@ -59,13 +68,16 @@ export function BattleArena({
   onAction,
   autoplay,
   onAutoplayConsumed,
+  revealLoot,
 }: {
   snapshot: GameSnapshot;
   busy: boolean;
   onAction: (action: ActionPayload) => void;
   autoplay: boolean;
   onAutoplayConsumed: () => void;
+  revealLoot: boolean;
 }) {
+  const [lootReplay, setLootReplay] = useState(0);
   const active = snapshot.activeBattle;
   const battle = active ?? snapshot.latestBattle!;
   const enemy = snapshot.catalog.enemies.find((candidate) => candidate.id === battle.enemyId);
@@ -313,6 +325,17 @@ export function BattleArena({
             </small>
           </div>
         )}
+        {!active &&
+          snapshot.latestBattle?.outcome === "victory" &&
+          snapshot.latestBattle.drops.length > 0 && (
+            <BattleLootReveal
+              key={`${battle.id}-${lootReplay}`}
+              battle={snapshot.latestBattle}
+              items={snapshot.catalog.items}
+              enabled={!playback.playing}
+              reveal={revealLoot || lootReplay > 0}
+            />
+          )}
       </div>
       <div className="arena-action-caption" aria-live="polite">
         <Swords size={18} />
@@ -328,6 +351,14 @@ export function BattleArena({
               : "REPRODUÇÃO DA BATALHA"}
         </span>
         <div>
+          {!active &&
+            !playback.playing &&
+            outcome === "victory" &&
+            !!snapshot.latestBattle?.drops.length && (
+              <button onClick={() => setLootReplay((n) => n + 1)}>
+                <Package size={15} /> Ver drops
+              </button>
+            )}
           {!playback.reducedMotion && (
             <button
               onClick={playback.toggleSpeed}
@@ -372,9 +403,13 @@ export function BattleArena({
             busy={busy || playback.playing}
             onAction={onAction}
           />
-          <details className="arena-battle-journal">
+          <details className="arena-battle-journal" open>
             <summary>Histórico da batalha · {events.length} eventos</summary>
-            <CombatEventLog events={events} names={{ player: playerName, enemy: enemyName }} />
+            <CombatEventLog
+              events={events}
+              names={{ player: playerName, enemy: enemyName }}
+              follow
+            />
           </details>
           <p className="manual-battle-hint">
             {active?.manualOnly
@@ -382,6 +417,9 @@ export function BattleArena({
               : "A luta fica salva ao sair. Você pode assumir o automático pelo seletor de modo."}
           </p>
         </div>
+      )}
+      {!active && snapshot.latestBattle && (
+        <BattleLog battle={snapshot.latestBattle} snapshot={snapshot} />
       )}
     </section>
   );

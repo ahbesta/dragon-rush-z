@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./browser-test";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDatabase } from "../../src/server/db/client";
@@ -66,7 +66,10 @@ test("campanha avançada, vilas, fabricação, comparação, ranking e arena cl�
     const go = async (label: string) => {
       const menu = page.getByRole("button", { name: "Abrir menu", exact: true });
       if (await menu.isVisible()) await menu.click();
-      await page.getByRole("button", { name: label, exact: true }).click();
+      await page
+        .locator("#game-navigation")
+        .getByRole("button", { name: label, exact: true })
+        .click();
     };
     await page.goto("/jogo");
     for (const width of [1440, 390, 320]) {

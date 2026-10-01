@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./browser-test";
+import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { config } from "dotenv";
@@ -26,7 +27,7 @@ test.afterAll(async () => {
 async function go(page: Page, label: string) {
   if (await page.getByRole("button", { name: "Abrir menu", exact: true }).isVisible())
     await page.getByRole("button", { name: "Abrir menu" }).click();
-  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.locator("#game-navigation").getByRole("button", { name: label, exact: true }).click();
 }
 
 test("jornada real: conta, build, treino, campanha, vila, boss manual e ranking", async ({

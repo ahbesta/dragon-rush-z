@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./browser-test";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import sharp from "sharp";

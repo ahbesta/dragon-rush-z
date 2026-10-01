@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./browser-test";
+import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
@@ -25,7 +26,7 @@ test.afterAll(async () => {
 async function go(page: Page, label: string) {
   const menu = page.getByRole("button", { name: "Abrir menu", exact: true });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.locator("#game-navigation").getByRole("button", { name: label, exact: true }).click();
 }
 
 test("mapa: raças, caminhada, destinos, áreas, teclado, mercado e atividades reais", async ({
@@ -154,7 +155,7 @@ test("mapa: raças, caminhada, destinos, áreas, teclado, mercado e atividades r
   await expect(page.getByRole("heading", { name: "Explorar", exact: true })).toBeVisible();
   await expect(
     page
-      .locator(".encounter-panel")
+      .locator(".battle-area-current")
       .getByRole("heading", { name: "Montanhas do Monte Paozu", exact: true }),
   ).toBeVisible();
   expect(posts).toBe(0);

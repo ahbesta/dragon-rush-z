@@ -1010,3 +1010,318 @@
     display: none;
   }
 }
+.battle-arena > .battle-result {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid #426486;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 22px 24px;
+}
+.battle-arena .combat-log {
+  max-height: 270px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #446483 #132237;
+}
+.battle-reward-item {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #47617b;
+  border-radius: 8px;
+  padding: 7px 10px !important;
+}
+.battle-reward-item small {
+  display: block;
+  font-size: 8px;
+  margin-top: 3px;
+  color: #b8cadf;
+  letter-spacing: 0.08em;
+}
+.battle-reward-item.rarity-common {
+  border-color: #728399;
+  background: #253448;
+}
+.battle-reward-item.rarity-uncommon {
+  border-color: #44bf83;
+  background: #153c2e;
+}
+.battle-reward-item.rarity-rare {
+  border-color: #4caff1;
+  background: #13324d;
+}
+.battle-reward-item.rarity-epic {
+  border-color: #bd7bf6;
+  background: #30204b;
+}
+.battle-rewards .battle-reward-item > .item-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+.battle-stage:has(.arena-loot-reveal) .arena-outcome {
+  visibility: hidden;
+}
+.arena-loot-reveal {
+  --loot-color: #dbe8f5;
+  --loot-glow: #a9bdd470;
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+}
+.arena-loot-reveal.loot-uncommon {
+  --loot-color: #65e8a4;
+  --loot-glow: #36d59175;
+}
+.arena-loot-reveal.loot-rare {
+  --loot-color: #68cbff;
+  --loot-glow: #359fff85;
+}
+.arena-loot-reveal.loot-epic {
+  --loot-color: #de9eff;
+  --loot-glow: #b843ff99;
+}
+.arena-loot-dim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #04132345, #010911c4);
+  backdrop-filter: blur(2px);
+}
+.arena-loot-card {
+  position: relative;
+  width: min(320px, 85%);
+  padding: 22px 24px 18px;
+  text-align: center;
+  background: linear-gradient(145deg, #0c2036f2, #081426ee);
+  border: 1px solid var(--loot-color);
+  border-radius: 16px;
+  box-shadow:
+    0 0 45px var(--loot-glow),
+    0 18px 55px #0007;
+  animation: loot-arrive 400ms cubic-bezier(0.2, 0.7, 0.25, 1.2) both;
+}
+.arena-loot-close {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  color: #d7e6f7;
+  background: #061327;
+  border-radius: 5px;
+}
+.arena-loot-eyebrow {
+  font: 700 9px var(--font-body);
+  letter-spacing: 0.14em;
+  color: #adc5dc;
+}
+.arena-loot-art {
+  width: 138px;
+  height: 138px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: 12px auto 8px;
+}
+.arena-loot-art > .item-icon {
+  width: 112px;
+  height: 112px;
+  z-index: 1;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  animation: loot-float 1.8s ease-in-out infinite;
+}
+.arena-loot-art .item-icon img {
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px var(--loot-glow));
+}
+.arena-loot-quantity {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: #061329;
+  border: 1px solid var(--loot-color);
+  padding: 3px 7px;
+  border-radius: 5px;
+  font: 800 17px var(--font-display);
+  color: white;
+  z-index: 2;
+}
+.arena-loot-rays {
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  opacity: 0.35;
+  background: repeating-conic-gradient(
+    from 0deg,
+    transparent 0deg 20deg,
+    var(--loot-color) 23deg 28deg,
+    transparent 31deg 45deg
+  );
+  mask-image: radial-gradient(circle, #0000 15%, #000 35%, #0000 70%);
+  animation: loot-spin 14s linear infinite;
+}
+.loot-common .arena-loot-rays {
+  opacity: 0.15;
+}
+.arena-loot-ring {
+  position: absolute;
+  inset: 12px;
+  border: 1px solid var(--loot-color);
+  border-radius: 50%;
+  opacity: 0.3;
+  box-shadow: 0 0 20px var(--loot-glow);
+}
+.loot-rare .arena-loot-ring,
+.loot-epic .arena-loot-ring {
+  animation: loot-pulse 1.8s ease-out infinite;
+}
+.arena-loot-spark {
+  display: none;
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--loot-color);
+  box-shadow: 0 0 10px var(--loot-color);
+  transform: rotate(var(--spark-angle)) translateX(72px) rotate(45deg);
+}
+.loot-uncommon .arena-loot-spark {
+  display: block;
+  animation: loot-spark 2s ease-in-out infinite;
+  animation-delay: var(--spark-delay);
+}
+.loot-rare .arena-loot-spark,
+.loot-epic .arena-loot-spark {
+  display: block;
+  animation: loot-spark 1.1s ease-in-out infinite;
+  animation-delay: var(--spark-delay);
+}
+.loot-epic .arena-loot-card {
+  box-shadow:
+    0 0 60px var(--loot-glow),
+    0 0 110px #b843ff35;
+  border-width: 2px;
+}
+.arena-loot-rarity {
+  color: var(--loot-color);
+  font: 800 11px var(--font-body);
+  letter-spacing: 0.22em;
+}
+.arena-loot-card h3 {
+  font: 800 30px var(--font-display);
+  line-height: 1.05;
+  margin: 7px 0;
+  overflow-wrap: anywhere;
+}
+.arena-loot-saved {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  color: #8fdfbb;
+  font-size: 10px;
+}
+.arena-loot-next {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  margin: 12px auto 0;
+  padding: 6px 13px;
+  border-radius: 6px;
+  border: 1px solid #4b6683;
+  color: #dfeaff;
+  background: #152c44;
+  font-size: 10px;
+}
+@keyframes loot-arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.7) translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes loot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes loot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes loot-pulse {
+  from {
+    transform: scale(0.7);
+    opacity: 0.65;
+  }
+  to {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+@keyframes loot-spark {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@media (max-width: 650px) {
+  .battle-arena > .battle-result {
+    padding: 18px 12px;
+  }
+  .arena-loot-card {
+    padding: 12px 18px 11px;
+    border-radius: 12px;
+  }
+  .arena-loot-art {
+    width: 100px;
+    height: 100px;
+    margin: 5px auto 2px;
+  }
+  .arena-loot-art > .item-icon {
+    width: 83px;
+    height: 83px;
+  }
+  .arena-loot-card h3 {
+    font-size: 24px;
+    margin: 4px 0;
+  }
+  .arena-loot-next {
+    margin-top: 7px;
+  }
+  .arena-loot-quantity {
+    bottom: 2px;
+    right: 0;
+    font-size: 14px;
+  }
+  .arena-loot-spark {
+    transform: rotate(var(--spark-angle)) translateX(55px) rotate(45deg);
+  }
+  .arena-playback-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .arena-playback-controls > div {
+    flex-wrap: wrap;
+  }
+}

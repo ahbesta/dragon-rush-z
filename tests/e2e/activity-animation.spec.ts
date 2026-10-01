@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./browser-test";
+import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
@@ -23,7 +24,7 @@ test.afterAll(async () => {
 async function go(page: Page, label: string) {
   const menu = page.getByRole("button", { name: "Abrir menu", exact: true });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.locator("#game-navigation").getByRole("button", { name: label, exact: true }).click();
 }
 
 test("cenas animadas apenas na atividade em andamento, na página e visíveis", async ({

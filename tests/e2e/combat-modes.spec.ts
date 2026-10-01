@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "./browser-test";
+import { type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
@@ -140,6 +141,7 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await manual.click();
   await expect(manual).toHaveAttribute("aria-pressed", "true");
   await go(page, "Batalhar");
+  await page.getByRole("button", { name: "Trocar área", exact: true }).click();
   await page.getByRole("button", { name: /Montanhas/ }).click();
   await page.locator(".enemy-row").getByRole("button", { name: "Batalhar", exact: true }).click();
   await expect(battle).toBeVisible();
@@ -198,7 +200,13 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await manual.click();
   await expect(manual).toHaveAttribute("aria-pressed", "true");
   await go(page, "Batalhar");
-  await page.getByRole("button", { name: "Enfrentar boss", exact: true }).click();
+  await page.getByRole("button", { name: "Trocar área", exact: true }).click();
+  await page.getByRole("button", { name: /Castelo do Rei/ }).click();
+  await page
+    .locator(".enemy-row")
+    .filter({ hasText: "Piccolo Daimao" })
+    .getByRole("button", { name: "Desafiar · manual", exact: true })
+    .click();
   await expect(battle.getByRole("heading", { name: "Lutador vs Piccolo Daimao" })).toBeVisible();
   expect((await state(page)).activeBattle?.enemyMaxHp).toBe(832);
   await automatic.click();

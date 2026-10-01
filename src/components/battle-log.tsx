@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronUp, Swords, Trophy, X, Zap } from "lucide-react";
 import type { BattleEvent, BattleResult, GameSnapshot } from "@/game/types";
-import { formatNumber } from "./game-primitives";
+import { formatNumber, ItemIcon } from "./game-primitives";
+import { rarityNames } from "./battle-loot-reveal";
 import { EnemyPortrait } from "./enemy-portrait";
 export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot: GameSnapshot }) {
   const [expanded, setExpanded] = useState(false);
@@ -41,8 +42,21 @@ export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot
           </span>
           <span className="zeni-color">◈ +{formatNumber(battle.zeni)} Zeni</span>
           {battle.drops.map((drop) => (
-            <span key={drop.itemId}>
-              +{drop.quantity} {snapshot.catalog.items.find((i) => i.id === drop.itemId)?.name}
+            <span
+              className={`battle-reward-item rarity-${snapshot.catalog.items.find((i) => i.id === drop.itemId)?.rarity ?? "common"}`}
+              key={drop.itemId}
+            >
+              <ItemIcon item={snapshot.catalog.items.find((i) => i.id === drop.itemId)} />
+              <span>
+                +{drop.quantity} {snapshot.catalog.items.find((i) => i.id === drop.itemId)?.name}
+                <small>
+                  {
+                    rarityNames[
+                      snapshot.catalog.items.find((i) => i.id === drop.itemId)?.rarity ?? "common"
+                    ]
+                  }
+                </small>
+              </span>
             </span>
           ))}
         </div>
@@ -64,12 +78,29 @@ export function BattleLog({ battle, snapshot }: { battle: BattleResult; snapshot
 export function CombatEventLog({
   events,
   names,
+  follow = false,
 }: {
   events: BattleEvent[];
   names: { player: string; enemy: string };
+  follow?: boolean;
 }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const atEnd = useRef(true);
+  useEffect(() => {
+    if (follow && atEnd.current && scroller.current)
+      scroller.current.scrollTop = scroller.current.scrollHeight;
+  }, [events, follow]);
   return (
-    <div className="combat-log" aria-label="Log de combate">
+    <div
+      ref={scroller}
+      className="combat-log"
+      aria-label="Log de combate"
+      tabIndex={0}
+      onScroll={(e) => {
+        const element = e.currentTarget;
+        atEnd.current = element.scrollHeight - element.clientHeight - element.scrollTop < 24;
+      }}
+    >
       {events.map((event) => (
         <div className={`log-event log-${event.type}`} key={event.seq}>
           <span className="log-round">{String(event.round).padStart(2, "0")}</span>
