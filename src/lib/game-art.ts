@@ -5,6 +5,21 @@ export type GameArtwork = {
   height: number;
 };
 
+export const activityAnimationArtwork = {
+  training: {
+    src: "/images/activities/treino-kame.webp",
+    alt: "Goku e Kuririn entregam leite com cascos de tartaruga durante o treinamento do Mestre Kame",
+    width: 3840,
+    height: 360,
+  },
+  rest: {
+    src: "/images/activities/descanso-kame.webp",
+    alt: "Goku, Kuririn e Yamcha relaxam na banheira da Kame House, com Puar ao lado",
+    width: 3840,
+    height: 360,
+  },
+} satisfies Record<"training" | "rest", GameArtwork>;
+
 const arena = (name: string, alt: string): GameArtwork => ({
   src: `/images/arenas/${name}.webp`,
   alt,

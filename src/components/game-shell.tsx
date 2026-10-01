@@ -49,6 +49,7 @@ import { GameLobby } from "./game-lobby";
 import { transformationArtwork, destinationArtwork, techniqueArtwork } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
 import { EnemyPortrait } from "./enemy-portrait";
+import { ActivityAnimation } from "./activity-animation";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -626,12 +627,23 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           {section === "training" && (
             <div className="training-grid">
               <section className="panel training-card">
-                <div className="activity-art training-art">
-                  <ArtworkImage
-                    art={destinationArtwork.training}
-                    sizes="(max-width: 900px) 90vw, 55vw"
-                    fallback={<Dumbbell size={52} />}
-                  />
+                <div
+                  className={`activity-art training-art${activity?.kind === "training" && remaining > 0 ? " activity-art-active" : ""}`}
+                >
+                  {activity?.kind === "training" && remaining > 0 ? (
+                    <ActivityAnimation
+                      kind="training"
+                      remaining={remaining}
+                      duration={trainingRule?.durationSeconds ?? remaining}
+                      fallbackArt={destinationArtwork.training}
+                    />
+                  ) : (
+                    <ArtworkImage
+                      art={destinationArtwork.training}
+                      sizes="(max-width: 900px) 90vw, 55vw"
+                      fallback={<Dumbbell size={52} />}
+                    />
+                  )}
                 </div>
                 <span className="eyebrow orange">DISCIPLINA. FOCO. EVOLUÇÃO.</span>
                 <h2>Treinamento de combate</h2>
@@ -664,12 +676,23 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               </section>
               <div>
                 <section className="panel recovery-card">
-                  <div className="activity-art recovery-art">
-                    <ArtworkImage
-                      art={destinationArtwork.rest}
-                      sizes="(max-width: 900px) 90vw, 40vw"
-                      fallback={<Heart size={30} />}
-                    />
+                  <div
+                    className={`activity-art recovery-art${activity?.kind === "rest" && remaining > 0 ? " activity-art-active" : ""}`}
+                  >
+                    {activity?.kind === "rest" && remaining > 0 ? (
+                      <ActivityAnimation
+                        kind="rest"
+                        remaining={remaining}
+                        duration={restRule?.durationSeconds ?? remaining}
+                        fallbackArt={destinationArtwork.rest}
+                      />
+                    ) : (
+                      <ArtworkImage
+                        art={destinationArtwork.rest}
+                        sizes="(max-width: 900px) 90vw, 40vw"
+                        fallback={<Heart size={30} />}
+                      />
+                    )}
                   </div>
                   <h3>Recupere suas forças</h3>
                   <p>
