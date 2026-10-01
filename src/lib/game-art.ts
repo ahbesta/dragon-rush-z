@@ -5,6 +5,92 @@ export type GameArtwork = {
   height: number;
 };
 
+const arena = (name: string, alt: string): GameArtwork => ({
+  src: `/images/arenas/${name}.webp`,
+  alt,
+  width: 1600,
+  height: 900,
+});
+export const battleArenaArtwork = {
+  floresta: arena("floresta", "Clareira da Floresta com montanhas ao fundo"),
+  montanhas: arena("montanhas", "Planalto rochoso entre os cânions da Terra"),
+  deserto: arena("deserto", "Arena de areia no Deserto ao pôr do sol"),
+  "red-ribbon": arena("red-ribbon", "Pátio de combate da fortaleza Red Ribbon"),
+  "palacio-daimao": arena("palacio-daimao", "Pátio do palácio do Rei Demônio"),
+} satisfies Record<string, GameArtwork>;
+export type SpriteSheet = {
+  src: string;
+  alt: string;
+  scale: number;
+  frames?: 3 | 4;
+  frameWidth?: number;
+};
+export const playerBattleSprites: Readonly<Partial<Record<string, SpriteSheet>>> = {
+  saiyajin: {
+    src: "/images/battle-sprites/saiyajin-v2.webp",
+    alt: "Sprite Saiyajin de Goku em combate",
+    scale: 1,
+    frames: 4,
+    frameWidth: 208,
+  },
+  humano: {
+    src: "/images/battle-sprites/humano-v2.webp",
+    alt: "Sprite Humano de Kuririn em combate",
+    scale: 0.8,
+    frames: 4,
+    frameWidth: 208,
+  },
+  namekuseijin: {
+    src: "/images/battle-sprites/namekuseijin-v2.webp",
+    alt: "Sprite Namekuseijin de Piccolo em combate",
+    scale: 1.1,
+    frames: 4,
+    frameWidth: 208,
+  },
+  majin: {
+    src: "/images/battle-sprites/majin-v2.webp",
+    alt: "Sprite de Majin Buu em combate",
+    scale: 1,
+    frames: 4,
+    frameWidth: 208,
+  },
+  freeza: {
+    src: "/images/battle-sprites/freeza-v2.webp",
+    alt: "Sprite de Freeza em combate",
+    scale: 0.9,
+    frames: 4,
+    frameWidth: 208,
+  },
+};
+export const enemyBattleSprites: Readonly<Partial<Record<string, SpriteSheet>>> = {
+  lobo: { src: "/images/battle-sprites/lobo.webp", alt: "Sprite do Lobo em combate", scale: 0.7 },
+  bandido: {
+    src: "/images/battle-sprites/bandido.webp",
+    alt: "Sprite do Bandido em combate",
+    scale: 1,
+  },
+  dinossauro: {
+    src: "/images/battle-sprites/dinossauro.webp",
+    alt: "Sprite do Dinossauro em combate",
+    scale: 1.4,
+  },
+  saibaman: {
+    src: "/images/battle-sprites/saibaman.webp",
+    alt: "Sprite do Saibaman em combate",
+    scale: 0.75,
+  },
+  "soldado-red-ribbon": {
+    src: "/images/battle-sprites/soldado-red-ribbon.webp",
+    alt: "Sprite do Soldado da Red Ribbon em combate",
+    scale: 1,
+  },
+  "piccolo-daimao": {
+    src: "/images/battle-sprites/piccolo-daimao.webp",
+    alt: "Sprite de Piccolo Daimao em combate",
+    scale: 1.2,
+  },
+};
+
 const scene = (name: string, alt: string): GameArtwork => ({
   src: `/images/scenes/${name}.webp`,
   alt,

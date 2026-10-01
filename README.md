@@ -146,3 +146,7 @@ O projeto não inclui PvP, chat, guildas, comércio, rankings, monetização ou 
 A tela inicial prioriza jogar: treinamento direto, exploração, batalha e técnicas em cards ilustrados. O menu superior e o painel de HP/Ki acompanham as telas; no celular, o menu pode ser aberto pelo botão no cabeçalho. A ficha, os equipamentos e o histórico ficam abaixo das ações principais.
 
 A arte está incluída no projeto. O prompt, a origem e a organização dos assets estão em [docs/visual-assets.md](docs/visual-assets.md).
+
+## Arena 2D
+
+A batalha possui dois lutadores em sprites de jogo, cenários por área e animações ligadas aos eventos do servidor. O modo manual permite escolher técnicas; o automático reproduz a luta. Há velocidade 2x, pular e rever, sem repetir recompensas. A interface respeita a preferência de movimento reduzido. Consulte [a arquitetura e as artes da arena](docs/battle-arena.md).

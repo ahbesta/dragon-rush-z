@@ -17,6 +17,7 @@ type EventInput = BattleEvent extends infer T
   : never;
 export type CombatInput = {
   id: string;
+  areaId?: string;
   player: {
     name: string;
     hp: number;
@@ -62,6 +63,7 @@ export function createCombat(input: CombatInput): CombatState {
   const state: CombatState = structuredClone({
     version: 1,
     id: input.id,
+    areaId: input.areaId,
     round: 0,
     player: { ...input.player, turns: 0, nextUse: {}, buffs: [] },
     enemy: {
@@ -90,6 +92,12 @@ export function createCombat(input: CombatInput): CombatState {
     enemy: enemy.name,
     playerHp: state.player.hp,
     enemyHp: state.enemy.hp,
+    playerKi: state.player.ki,
+    enemyKi: state.enemy.ki,
+    playerMaxHp: state.player.stats.maxHp,
+    playerMaxKi: state.player.stats.maxKi,
+    enemyMaxHp: state.enemy.stats.maxHp,
+    enemyMaxKi: state.enemy.stats.maxKi,
   });
   return state;
 }
@@ -100,6 +108,7 @@ export function presentCombat(state: CombatState): ActiveBattle {
   return {
     id: state.id,
     enemyId: state.definition.id,
+    areaId: state.areaId,
     round: state.round + 1,
     playerHp: state.player.hp,
     playerKi: state.player.ki,
@@ -151,6 +160,7 @@ function completeCombat(state: CombatState, random: () => number) {
     version: 1,
     id: state.id,
     enemyId: state.definition.id,
+    areaId: state.areaId,
     outcome,
     playerHp: state.player.hp,
     playerKi: state.player.ki,
@@ -254,6 +264,7 @@ export function advanceCombat(
           round,
           actor: actorId,
           description: `Recuperou ${amount} HP`,
+          remainingHp: actor.hp,
         });
       } else {
         actor.stats[effect.attribute] += effect.amount;

@@ -115,6 +115,11 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
       return data.snapshot.character.level;
     })
     .toBe(2);
+  state = await (await page.request.get("/api/game")).json();
+  await expect(page.locator(".battle-arena")).toHaveAttribute(
+    "data-battle-id",
+    state.snapshot.latestBattle.id,
+  );
   await go(page, "Técnicas");
   await page.getByRole("button", { name: "Aprender · 30 Zeni", exact: true }).click();
   await expect(
@@ -166,6 +171,12 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
       return data.snapshot.character.flags.includes("defeated:soldado-red-ribbon");
     })
     .toBe(true);
+  state = await (await page.request.get("/api/game")).json();
+  // O commit no banco pode terminar antes de a resposta atualizar a tela.
+  await expect(page.locator(".battle-arena")).toHaveAttribute(
+    "data-battle-id",
+    state.snapshot.latestBattle.id,
+  );
   await go(page, "Inventário");
   await page
     .locator(".inventory-card")

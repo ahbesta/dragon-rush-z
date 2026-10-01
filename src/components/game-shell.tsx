@@ -43,7 +43,8 @@ import {
   Scene,
 } from "./game-primitives";
 import { BattleLog } from "./battle-log";
-import { CombatModeSelector, ManualBattle } from "./combat-controls";
+import { CombatModeSelector } from "./combat-controls";
+import { BattleArena } from "./battle-arena";
 import { GameLobby } from "./game-lobby";
 import { transformationArtwork, destinationArtwork, techniqueArtwork } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
@@ -68,6 +69,8 @@ type ApiResponse = {
 
 export function GameShell({ initial }: { initial: GameSnapshot }) {
   const [snapshot, setSnapshot] = useState(initial);
+  const [animatedBattleId, setAnimatedBattleId] = useState<string | null>(null);
+  const consumedAnimation = useCallback(() => setAnimatedBattleId(null), []);
   const [section, setSection] = useState<Section>("character");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
@@ -159,6 +162,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
       }
       retryRef.current = null;
       if (data.snapshot) {
+        if (
+          data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id &&
+          data.snapshot.latestBattle
+        )
+          setAnimatedBattleId(data.snapshot.latestBattle.id);
         adopt(data.snapshot);
         if (
           (data.snapshot.activeBattle?.id !== snapshot.activeBattle?.id &&
@@ -346,12 +354,17 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               </button>
             </div>
           )}
-          {snapshot.activeBattle && (
-            <ManualBattle
-              key={snapshot.activeBattle.id}
+          {(snapshot.activeBattle ||
+            ((section === "battle" || section === "explore") && snapshot.latestBattle)) && (
+            <BattleArena
+              key={snapshot.activeBattle?.id ?? snapshot.latestBattle!.id}
               snapshot={snapshot}
               busy={busy}
               onAction={act}
+              autoplay={
+                animatedBattleId === (snapshot.activeBattle?.id ?? snapshot.latestBattle?.id)
+              }
+              onAutoplayConsumed={consumedAnimation}
             />
           )}
           {activity && (

@@ -126,3 +126,9 @@ A bota na primeira ilustração dava a impressão de estar invertida. A arte foi
 ```text
 Correct the foot anatomy in this Dragon Ball style martial arts kick illustration. Keep the same orange gi trousers, blue boot with red trim, cyan motion streaks, navy rocky background, square composition and cel-shaded anime finish. Replace the reversed-looking boot with an anatomically clear SIDE PROFILE of one foot kicking horizontally to the RIGHT. The leg enters from the LEFT, the ankle is at the LEFT end of the boot, the HEEL is at the LEFT below the ankle, the TOE is at the far RIGHT, and the sole runs along the BOTTOM of the foot. Show the OUTER SIDE of the blue boot, not the bottom sole facing the viewer. The toe extends away from the orange trouser leg and is slightly pointed down in a natural straight-leg kick. No twisted ankle, no backwards foot, no sole on the front of the boot, no extra feet or legs, no detached foot. Keep the entire foot within the image with margin. No faces, letters, text, numbers, logos, watermarks or UI. Fully opaque background. This is a game technique card artwork correction.
 ```
+
+## Arena em sprites
+
+As batalhas utilizam sprites próprios em pixel art, separados dos retratos em `races`. São cinco representantes com quatro poses e seis inimigos com três poses (38 poses). Os arquivos finais estão em `public/images/battle-sprites`; os cinco cenários ficam em `public/images/arenas`. A Floresta usa a referência do usuário em `public/images/image.png`.
+
+As artes novas foram geradas com **imagegen integrado**, sem CLI, e inspecionadas antes e depois da preparação para jogo. Consulte [os prompts completos](battle-art-prompts.json) e [os detalhes de preparação e reprodução](battle-arena.md).

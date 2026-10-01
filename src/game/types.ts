@@ -118,6 +118,7 @@ export type CombatFighter = {
 export type CombatState = {
   version: 1;
   id: string;
+  areaId?: string;
   round: number;
   player: CombatFighter;
   enemy: CombatFighter;
@@ -131,6 +132,7 @@ export type CombatState = {
 export type ActiveBattle = {
   id: string;
   enemyId: string;
+  areaId?: string;
   round: number;
   playerHp: number;
   playerKi: number;
@@ -176,7 +178,19 @@ export type ActivityState = {
   completedAt: Date | null;
 };
 export type BattleEvent = { seq: number; round: number } & (
-  | { type: "start"; player: string; enemy: string; playerHp: number; enemyHp: number }
+  | {
+      type: "start";
+      player: string;
+      enemy: string;
+      playerHp: number;
+      enemyHp: number;
+      playerKi?: number;
+      enemyKi?: number;
+      playerMaxHp?: number;
+      playerMaxKi?: number;
+      enemyMaxHp?: number;
+      enemyMaxKi?: number;
+    }
   | {
       type: "attack";
       actor: "player" | "enemy";
@@ -198,7 +212,7 @@ export type BattleEvent = { seq: number; round: number } & (
       amount: number;
       remainingHp: number;
     }
-  | { type: "effect"; actor: "player" | "enemy"; description: string }
+  | { type: "effect"; actor: "player" | "enemy"; description: string; remainingHp?: number }
   | { type: "phase"; name: string }
   | { type: "defeat"; actor: "player" | "enemy" }
   | { type: "reward"; xp: number; zeni: number; drops: { itemId: string; quantity: number }[] }
@@ -208,6 +222,7 @@ export type BattleResult = {
   version: 1;
   id: string;
   enemyId: string;
+  areaId?: string;
   outcome: "victory" | "defeat" | "draw";
   playerHp: number;
   playerKi: number;

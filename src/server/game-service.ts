@@ -390,6 +390,7 @@ export async function executeAction(
           .filter((t): t is Catalog["techniques"][number] => Boolean(t));
         const combat = createCombat({
           id: randomUUID(),
+          areaId: input.action === "boss" ? undefined : input.areaId,
           player: {
             name: character.name,
             hp: character.hp,

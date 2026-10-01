@@ -1,0 +1,1012 @@
+.battle-arena {
+  --arena-blue: #53c9ff;
+  --arena-gold: #ffc454;
+  margin-bottom: 28px;
+  overflow: hidden;
+  border: 1px solid #476b90;
+  border-radius: 16px;
+  background: #0b1628;
+  box-shadow:
+    0 18px 60px #0005,
+    inset 0 0 0 3px #14253a;
+  color: #f1f7ff;
+}
+.arena-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 18px 24px;
+  background: linear-gradient(120deg, #1c3856, #132940 60%, #2c2730);
+  border-bottom: 2px solid #ed9e36;
+}
+.arena-topbar .eyebrow {
+  color: #82bdda;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+}
+.arena-topbar h2 {
+  margin: 5px 0 0;
+  font:
+    800 28px "Barlow Condensed",
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.arena-round {
+  padding: 8px 13px;
+  flex-shrink: 0;
+  border: 1px solid #efb85d;
+  border-radius: 4px;
+  background: #0b172f;
+  color: #ffce76;
+  font:
+    700 12px "JetBrains Mono",
+    monospace;
+  box-shadow: 3px 3px 0 #080f1d;
+}
+.arena-hud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 18px 24px;
+  background: linear-gradient(180deg, #12273e, #0b1b2f);
+  border-bottom: 1px solid #477c9a;
+}
+.arena-status {
+  min-width: 0;
+}
+.arena-fighter-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.arena-fighter-name strong {
+  font:
+    700 23px "Barlow Condensed",
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.arena-fighter-name small {
+  font-size: 10px;
+  color: #93b1ca;
+}
+.arena-hud .meter {
+  margin-top: 8px;
+}
+.arena-hud .meter-label {
+  font-size: 11px;
+}
+.arena-hud .meter-track {
+  height: 10px;
+  border: 1px solid #3f657c;
+  border-radius: 2px;
+  background: #060f1e;
+  box-shadow: 0 1px 0 #6b9ec433;
+}
+.arena-hud .meter-track > span {
+  border-radius: 0;
+  transition: width 0.25s ease;
+  background: linear-gradient(180deg, #b5f5a5, #60d29b);
+}
+.arena-hud .ki .meter-track {
+  height: 7px;
+}
+.arena-hud .ki .meter-track > span {
+  background: linear-gradient(180deg, #aaefff, #42aef2);
+}
+.arena-hud .enemy-status .hp .meter-track > span {
+  background: linear-gradient(180deg, #ffa78d, #ed6355);
+}
+.arena-hud-versus {
+  font:
+    italic 800 30px "Barlow Condensed",
+    sans-serif;
+  text-align: center;
+  color: #ffca62;
+  text-shadow: 2px 3px #050f20;
+}
+.battle-stage {
+  height: clamp(300px, 42vw, 510px);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  container-type: inline-size;
+  --dash: 42cqw;
+  background: #397778;
+}
+.arena-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 65%;
+}
+.arena-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, #07152422, transparent 30%, transparent 70%, #08243133),
+    radial-gradient(ellipse at 50% 55%, transparent 55%, #08162544);
+}
+.arena-location {
+  position: absolute;
+  top: 15px;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border: 1px solid #cae9ee44;
+  border-radius: 5px;
+  background: #071b2cd9;
+  color: #d4f1f2;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  box-shadow: 0 3px 10px #0003;
+}
+.arena-location-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #a5efd2;
+  box-shadow: 0 0 8px #a5efd2;
+}
+.arena-floor-grid {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 5%;
+  background: linear-gradient(0deg, #09192944, transparent);
+}
+.arena-fighter {
+  position: absolute;
+  bottom: 16%;
+  left: 22%;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+.arena-fighter.enemy {
+  left: 78%;
+}
+.arena-ground-shadow {
+  position: absolute;
+  bottom: -2px;
+  left: 8%;
+  right: 8%;
+  height: 11px;
+  border-radius: 50%;
+  background: #0b241b66;
+  filter: blur(2px);
+  transform: scaleX(1.12);
+}
+.arena-sprite-window {
+  width: calc(clamp(102px, 16cqw, 176px) * var(--sprite-scale) * var(--frame-width-ratio, 1));
+  height: calc(clamp(128px, 20cqw, 220px) * var(--sprite-scale));
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+.arena-sprite-sheet {
+  width: 300%;
+  height: 100%;
+  max-width: none;
+  display: block;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 0 #1119);
+  transform: translateX(0);
+}
+.arena-fighter-motion {
+  position: relative;
+  transform-origin: center bottom;
+  animation: arena-breathe 2.8s ease-in-out infinite;
+}
+.arena-fighter.enemy .arena-fighter-motion {
+  animation-delay: -0.8s;
+}
+.arena-side-tag {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border: 1px solid #acc8ee66;
+  border-radius: 3px;
+  color: #eef8ff;
+  background: #0a2145dc;
+  font:
+    600 8px "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  box-shadow: 0 2px 3px #0004;
+}
+.arena-fighter.enemy .arena-side-tag {
+  background: #492331de;
+  border-color: #dcaa9999;
+}
+.arena-aura {
+  position: absolute;
+  inset: 15% 0 -2%;
+  opacity: 0;
+  background: radial-gradient(ellipse, #69e4ff44, transparent 66%);
+  filter: blur(4px);
+}
+.arena-fighter.attacking.player .arena-fighter-motion {
+  animation: arena-player-strike var(--strike-duration) ease-in-out both;
+}
+.arena-fighter.attacking.enemy .arena-fighter-motion {
+  animation: arena-enemy-strike var(--strike-duration) ease-in-out both;
+}
+.arena-fighter.casting .arena-fighter-motion {
+  animation: arena-cast var(--strike-duration) ease-in-out both;
+}
+.arena-fighter.casting .arena-aura {
+  opacity: 1;
+  background: radial-gradient(ellipse, var(--fx-color), transparent 65%);
+  animation: arena-charge var(--strike-duration) ease-in-out both;
+}
+.arena-fighter.hurt .arena-fighter-motion {
+  animation: arena-hit var(--strike-duration) linear both;
+}
+.arena-fighter.fallen .arena-fighter-motion {
+  opacity: 0.42;
+  filter: grayscale(0.7);
+  animation: none;
+  transform: translateY(7px) rotate(9deg);
+}
+.arena-fighter.fallen.enemy .arena-fighter-motion {
+  transform: translateY(7px) rotate(-9deg);
+}
+.boss-enraged .arena-fighter.enemy .arena-aura {
+  opacity: 0.35;
+  background: radial-gradient(ellipse, #df58ff, transparent 68%);
+  animation: arena-enrage 1.2s ease-in-out infinite;
+}
+.arena-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  --origin: 22%;
+  --target: 78%;
+  --direction: 1;
+}
+.arena-fx.fx-from-enemy {
+  --origin: 78%;
+  --target: 22%;
+  --direction: -1;
+}
+.arena-damage-number {
+  position: absolute;
+  top: 38%;
+  left: var(--target);
+  transform: translateX(-50%);
+  color: #fff7df;
+  font:
+    italic 800 clamp(28px, 4cqw, 48px) "Barlow Condensed",
+    sans-serif;
+  text-shadow:
+    -2px -2px #b85323,
+    2px -2px #b85323,
+    -2px 2px #b85323,
+    3px 3px #432009;
+  opacity: 0;
+  animation: arena-damage var(--strike-duration) ease-out both;
+}
+.arena-damage-number small {
+  display: block;
+  text-align: center;
+  font:
+    600 8px "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.15em;
+  color: #ffda84;
+  text-shadow: 1px 1px #201406;
+}
+.arena-hit-burst {
+  position: absolute;
+  left: var(--target);
+  top: 67%;
+  width: 90px;
+  height: 90px;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: arena-burst var(--strike-duration) linear both;
+}
+.arena-hit-burst i {
+  position: absolute;
+  top: 45%;
+  left: 45%;
+  width: 55%;
+  height: 8%;
+  border-radius: 100% 10% 10% 100%;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, #fffdf1, #ffd85a, transparent);
+  box-shadow: 0 0 9px #ffb722;
+}
+.arena-hit-burst i:nth-child(2) {
+  transform: rotate(45deg);
+}
+.arena-hit-burst i:nth-child(3) {
+  transform: rotate(90deg);
+}
+.arena-hit-burst i:nth-child(4) {
+  transform: rotate(135deg);
+}
+.arena-hit-burst i:nth-child(5) {
+  transform: rotate(180deg);
+}
+.arena-hit-burst i:nth-child(6) {
+  transform: rotate(225deg);
+}
+.arena-hit-burst i:nth-child(7) {
+  transform: rotate(270deg);
+}
+.arena-hit-burst i:nth-child(8) {
+  transform: rotate(315deg);
+}
+.arena-impact-ring {
+  position: absolute;
+  left: var(--target);
+  top: 67%;
+  width: 80px;
+  height: 80px;
+  border: 3px solid #fff7c8;
+  border-radius: 50%;
+  opacity: 0;
+  animation: arena-ring var(--strike-duration) ease-out both;
+}
+.arena-speed-lines {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 59%;
+  height: 17%;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 6px,
+    #fff5b455 6px 7px,
+    transparent 7px 14px
+  );
+  mask-image: linear-gradient(90deg, transparent, #000, transparent);
+  opacity: 0;
+  animation: arena-lines var(--strike-duration) linear both;
+}
+.arena-slash {
+  position: absolute;
+  left: var(--target);
+  top: 54%;
+  height: 95px;
+  width: 10px;
+  background: linear-gradient(transparent, #fff9e2, #ffb23f, transparent);
+  opacity: 0;
+  transform: rotate(38deg);
+  animation: arena-lines var(--strike-duration) linear both;
+  filter: drop-shadow(0 0 6px #ffcc39);
+}
+.arena-ki-charge {
+  position: absolute;
+  left: var(--origin);
+  top: 66%;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 12%, var(--fx-color) 30%, transparent 70%);
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  animation: arena-orb var(--strike-duration) ease-in both;
+}
+.arena-ki-projectile {
+  position: absolute;
+  top: 63%;
+  left: var(--origin);
+  width: 70px;
+  height: 28px;
+  border-radius: 60%;
+  background: radial-gradient(ellipse at 65% 50%, white 5%, var(--fx-color) 35%, transparent 72%);
+  filter: drop-shadow(0 0 7px var(--fx-color));
+  opacity: 0;
+  animation: arena-projectile var(--strike-duration) linear both;
+}
+.arena-ki-projectile i {
+  position: absolute;
+  width: 65%;
+  height: 30%;
+  top: 35%;
+  right: 60%;
+  background: linear-gradient(90deg, transparent, var(--fx-color), #fff);
+  border-radius: 50%;
+}
+.arena-ki-projectile i:nth-child(2) {
+  top: 10%;
+  height: 10%;
+  width: 110%;
+}
+.arena-ki-projectile i:nth-child(3) {
+  top: 80%;
+  height: 10%;
+  width: 100%;
+}
+.fx-from-enemy .arena-ki-projectile {
+  transform: scaleX(-1);
+}
+.arena-beam-trail {
+  position: absolute;
+  top: 66%;
+  left: 22%;
+  right: 22%;
+  height: 12px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--fx-color),
+    #f2faff,
+    var(--fx-color),
+    transparent
+  );
+  filter: drop-shadow(0 0 8px var(--fx-color));
+  opacity: 0;
+  animation: arena-beam var(--strike-duration) ease-out both;
+}
+.fx-ki .arena-hit-burst i {
+  background: linear-gradient(90deg, white, var(--fx-color), transparent);
+  box-shadow: 0 0 10px var(--fx-color);
+}
+.fx-ki .arena-impact-ring {
+  border-color: var(--fx-color);
+}
+.fx-ki .arena-damage-number {
+  text-shadow:
+    -2px -2px #124d79,
+    2px -2px #124d79,
+    -2px 2px #124d79,
+    3px 3px #103962;
+  color: #e8fcff;
+}
+.arena-phase-banner {
+  position: absolute;
+  z-index: 7;
+  top: 36%;
+  left: 5%;
+  right: 5%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border-block: 1px solid #fcb5ff;
+  color: #fff0fd;
+  background: linear-gradient(90deg, transparent, #411651ee 20%, #411651ee 80%, transparent);
+  font:
+    800 clamp(21px, 3cqw, 35px) "Barlow Condensed",
+    sans-serif;
+  text-align: center;
+  animation: arena-phase var(--strike-duration) ease both;
+}
+.arena-outcome {
+  position: absolute;
+  z-index: 6;
+  left: 15%;
+  right: 15%;
+  top: 22%;
+  text-align: center;
+  pointer-events: none;
+}
+.arena-outcome > span {
+  font:
+    italic 800 clamp(40px, 7cqw, 78px) "Barlow Condensed",
+    sans-serif;
+  color: #ffe49a;
+  letter-spacing: 0.08em;
+  text-shadow:
+    2px 2px #815526,
+    4px 4px #0b233b,
+    0 0 28px #ffd05844;
+}
+.arena-outcome > small {
+  display: block;
+  font:
+    600 9px "JetBrains Mono",
+    monospace;
+  letter-spacing: 0.25em;
+  color: #fff7e8;
+  text-shadow: 1px 1px 3px #051a2b;
+}
+.arena-outcome.defeat > span {
+  color: #ffb0a0;
+  text-shadow:
+    2px 2px #973b3b,
+    4px 4px #0b233b;
+}
+.arena-action-caption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 20px;
+  background: #12283e;
+  border-top: 2px solid #486e88;
+  min-height: 60px;
+}
+.arena-action-caption > svg {
+  color: #f8bb57;
+  flex-shrink: 0;
+}
+.arena-action-caption > span {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+}
+.arena-action-caption > small {
+  color: #97b9d6;
+  font:
+    500 9px "JetBrains Mono",
+    monospace;
+  flex-shrink: 0;
+}
+.arena-playback-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #0d1e31;
+  border-bottom: 1px solid #293f54;
+}
+.arena-playback-controls > span {
+  font:
+    500 9px "JetBrains Mono",
+    monospace;
+  color: #91aac2;
+  letter-spacing: 0.07em;
+}
+.arena-playback-controls > div {
+  display: flex;
+  gap: 7px;
+}
+.arena-playback-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid #3a5874;
+  border-radius: 4px;
+  font-size: 10px;
+  background: #172c43;
+  color: #c4dcf3;
+}
+.arena-playback-controls button:hover {
+  border-color: #edb86d;
+  color: #ffe4aa;
+}
+.battle-arena button:focus-visible,
+.arena-battle-journal > summary:focus-visible {
+  outline: 3px solid #79c7ff;
+  outline-offset: 3px;
+}
+.arena-commands {
+  padding: 20px;
+  background: linear-gradient(135deg, #122b43, #0d1b2d);
+}
+.arena-command-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+.arena-command-heading .eyebrow {
+  color: #e3a958;
+  font-size: 9px;
+}
+.arena-command-heading h3 {
+  margin: 4px 0 0;
+  font:
+    700 23px "Barlow Condensed",
+    sans-serif;
+}
+.arena-command-heading > small {
+  color: #91b2ce;
+  font-size: 10px;
+}
+.arena-commands .manual-techniques {
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+}
+.arena-commands .manual-technique {
+  min-height: 80px;
+  position: relative;
+  border-radius: 7px;
+  border: 1px solid #466382;
+  background: linear-gradient(145deg, #243d59, #142a43);
+  box-shadow: 0 3px 0 #061628;
+}
+.arena-commands .manual-technique:not(:disabled):hover {
+  border-color: #ffca79;
+  background: linear-gradient(145deg, #554433, #2b3542);
+  transform: translateY(-1px);
+}
+.arena-commands .manual-technique:not(:disabled):active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.arena-commands .manual-technique:disabled {
+  opacity: 0.42;
+}
+.arena-commands .manual-technique img {
+  width: 48px;
+  height: 48px;
+  border: 1px solid #96b7db44;
+}
+.arena-commands .manual-technique strong {
+  font:
+    700 19px "Barlow Condensed",
+    sans-serif;
+}
+.arena-commands .manual-technique small {
+  font-size: 10px;
+}
+.arena-battle-journal {
+  margin-top: 18px;
+  border-top: 1px solid #375169;
+  padding-top: 12px;
+}
+.arena-battle-journal > summary {
+  cursor: pointer;
+  color: #b3cde4;
+  font-size: 11px;
+}
+.arena-battle-journal .combat-log {
+  margin-top: 14px;
+}
+.arena-commands .manual-battle-hint {
+  margin: 12px 0 0;
+  font-size: 10px;
+  color: #8daac5;
+}
+@keyframes arena-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes arena-player-strike {
+  0%,
+  12%,
+  100% {
+    transform: translateX(0);
+  }
+  37%,
+  57% {
+    transform: translateX(var(--dash));
+  }
+  68% {
+    transform: translateX(calc(var(--dash) * 0.87));
+  }
+}
+@keyframes arena-enemy-strike {
+  0%,
+  12%,
+  100% {
+    transform: translateX(0);
+  }
+  37%,
+  57% {
+    transform: translateX(calc(var(--dash) * -1));
+  }
+  68% {
+    transform: translateX(calc(var(--dash) * -0.87));
+  }
+}
+@keyframes arena-cast {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  18%,
+  35% {
+    transform: scale(1.04);
+  }
+  45%,
+  60% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes arena-hit {
+  0%,
+  40%,
+  85%,
+  100% {
+    transform: translateX(0);
+    filter: none;
+  }
+  45%,
+  55%,
+  65% {
+    transform: translateX(-6px);
+    filter: brightness(1.6) sepia(0.5);
+  }
+  50%,
+  60%,
+  70% {
+    transform: translateX(6px);
+    filter: brightness(1.2) sepia(0.5);
+  }
+}
+@keyframes arena-charge {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  20%,
+  35% {
+    opacity: 0.45;
+    transform: scale(1.15);
+  }
+  55% {
+    opacity: 0.12;
+    transform: scale(1.3);
+  }
+}
+@keyframes arena-enrage {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.13);
+  }
+}
+@keyframes arena-damage {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.7);
+  }
+  47%,
+  72% {
+    opacity: 1;
+    transform: translate(-50%, -10px) scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -45px) scale(0.95);
+  }
+}
+@keyframes arena-burst {
+  0%,
+  40%,
+  72%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  48%,
+  54% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  64% {
+    opacity: 0.25;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+@keyframes arena-ring {
+  0%,
+  40% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+  49% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  82%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.8);
+  }
+}
+@keyframes arena-lines {
+  0%,
+  25%,
+  76%,
+  100% {
+    opacity: 0;
+  }
+  37%,
+  54% {
+    opacity: 0.8;
+  }
+}
+@keyframes arena-orb {
+  0%,
+  10%,
+  48%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.1);
+  }
+  23%,
+  33% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+@keyframes arena-projectile {
+  0%,
+  25% {
+    opacity: 0;
+    left: var(--origin);
+  }
+  30% {
+    opacity: 1;
+    left: var(--origin);
+  }
+  48% {
+    opacity: 1;
+    left: var(--target);
+  }
+  55%,
+  100% {
+    opacity: 0;
+    left: var(--target);
+  }
+}
+@keyframes arena-beam {
+  0%,
+  30%,
+  65%,
+  100% {
+    opacity: 0;
+    transform: scaleY(0.2);
+  }
+  39%,
+  48% {
+    opacity: 0.7;
+    transform: scaleY(1.3);
+  }
+}
+@keyframes arena-phase {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scaleX(0.8);
+  }
+  20%,
+  80% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+@media (max-width: 650px) {
+  .arena-topbar {
+    padding: 14px;
+    gap: 8px;
+  }
+  .arena-topbar .eyebrow {
+    font-size: 8px;
+    letter-spacing: 0.06em;
+  }
+  .arena-topbar h2 {
+    font-size: 22px;
+  }
+  .arena-round {
+    font-size: 9px;
+    padding: 7px 8px;
+  }
+  .arena-hud {
+    grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1fr);
+    gap: 8px;
+    padding: 13px;
+  }
+  .arena-hud-versus {
+    font-size: 24px;
+  }
+  .arena-fighter-name {
+    display: block;
+    margin-bottom: 7px;
+  }
+  .arena-fighter-name strong {
+    display: block;
+    font-size: 20px;
+    line-height: 1.15;
+  }
+  .arena-fighter-name small {
+    font-size: 8px;
+  }
+  .arena-hud .meter-label {
+    font-size: 9px;
+    gap: 3px;
+  }
+  .arena-hud .meter-label svg {
+    display: none;
+  }
+  .arena-hud .meter-track {
+    height: 8px;
+  }
+  .arena-hud .ki .meter-track {
+    height: 6px;
+  }
+  .battle-stage {
+    height: 300px;
+    --dash: 38cqw;
+  }
+  .arena-fighter {
+    left: 24%;
+  }
+  .arena-fighter.enemy {
+    left: 76%;
+  }
+  .arena-fx {
+    --origin: 24%;
+    --target: 76%;
+  }
+  .arena-fx.fx-from-enemy {
+    --origin: 76%;
+    --target: 24%;
+  }
+  .arena-location {
+    top: 10px;
+    left: 10px;
+    font-size: 9px;
+  }
+  .arena-action-caption {
+    padding: 12px;
+    gap: 8px;
+  }
+  .arena-action-caption > span {
+    font-size: 11px;
+  }
+  .arena-action-caption > small {
+    font-size: 8px;
+  }
+  .arena-playback-controls {
+    padding: 9px 12px;
+  }
+  .arena-playback-controls > span {
+    font-size: 7px;
+    max-width: 44%;
+  }
+  .arena-commands {
+    padding: 15px 12px;
+  }
+  .arena-command-heading {
+    align-items: start;
+  }
+  .arena-command-heading > small {
+    max-width: 45%;
+    font-size: 9px;
+    text-align: right;
+  }
+  .arena-commands .manual-techniques {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .arena-commands .manual-technique {
+    min-height: 67px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .battle-arena *,
+  .battle-arena *::before,
+  .battle-arena *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .arena-fx,
+  .arena-phase-banner {
+    display: none;
+  }
+}
