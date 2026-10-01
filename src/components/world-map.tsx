@@ -14,6 +14,7 @@ import {
   type MapPoint,
 } from "@/lib/world-map";
 import { ArtworkImage } from "./artwork-image";
+import { WorldMapAmbience } from "./world-map-ambience";
 
 type Props = {
   snapshot: GameSnapshot;
@@ -209,6 +210,7 @@ export function WorldMap({
                 onError={() => setMapFailed(true)}
               />
             )}
+            {!mapFailed && <WorldMapAmbience paused={overlay !== null} />}
             {mapDestinations.map(({ id, title, subtitle, label, icon: Icon, ...destination }) => (
               <button
                 key={id}

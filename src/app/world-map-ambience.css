@@ -1,0 +1,258 @@
+.world-map-canvas {
+  container-type: inline-size;
+}
+.world-map-ambience {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.world-map-ambience * {
+  pointer-events: none;
+}
+.map-life-actor {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  aspect-ratio: var(--life-aspect);
+  visibility: hidden;
+}
+.map-life-actor[data-ready="true"] {
+  visibility: visible;
+}
+.map-life-route,
+.map-life-facing,
+.map-life-window {
+  width: 100%;
+  height: 100%;
+}
+.map-life-window {
+  overflow: hidden;
+  filter: drop-shadow(0 1px 1px #122c3440);
+}
+.map-life-sheet {
+  display: block;
+  width: 400%;
+  max-width: none;
+  height: 100%;
+  image-rendering: auto;
+  animation: map-life-frames var(--life-frame-seconds) steps(4) infinite;
+}
+.map-life-patrol .map-life-route {
+  animation: map-life-patrol var(--life-seconds) linear var(--life-delay) infinite;
+}
+.map-life-patrol .map-life-facing {
+  animation: map-life-turn var(--life-seconds) steps(1) var(--life-delay) infinite;
+}
+.map-life-idle .map-life-route {
+  animation: map-life-breathe var(--life-seconds) ease-in-out var(--life-delay) infinite;
+}
+.map-life-foliage {
+  z-index: 0;
+}
+.map-life-foliage .map-life-window {
+  filter: none;
+}
+.map-life-flight {
+  z-index: 2;
+}
+.map-life-flight .map-life-route {
+  animation: map-life-flight var(--life-seconds) linear var(--life-delay) infinite;
+}
+.map-life-flight .map-life-window {
+  filter: drop-shadow(0 1px 1px #071a3370);
+}
+.map-life-shadow {
+  position: absolute;
+  left: 26%;
+  width: 48%;
+  bottom: 5%;
+  height: 7%;
+  border-radius: 50%;
+  background: #1c332a42;
+  filter: blur(1px);
+}
+.map-life-cloud {
+  position: absolute;
+  top: 3%;
+  width: 13%;
+  height: 3%;
+  opacity: 0.22;
+  background: radial-gradient(ellipse, #edf9ff9c, #f7ffff00 70%);
+  animation: map-life-cloud 55s linear infinite;
+}
+.map-life-cloud-west {
+  left: 1%;
+  animation-delay: -12s;
+}
+.map-life-cloud-east {
+  left: 60%;
+  top: 1%;
+  animation-duration: 73s;
+  animation-delay: -20s;
+}
+.map-life-leaf {
+  position: absolute;
+  width: 0.4cqw;
+  height: 0.22cqw;
+  border-radius: 80% 0 80% 0;
+  background: #a8c746;
+  box-shadow: 0 1px #47773c;
+  animation: map-life-leaf 15s ease-in-out infinite;
+}
+.map-life-waterfall {
+  position: absolute;
+  width: 0.8%;
+  background: repeating-linear-gradient(
+    180deg,
+    #dbfaff00 0 14%,
+    #ecffff60 17% 22%,
+    #dbfaff00 25% 40%
+  );
+  background-size: 100% 180%;
+  border-radius: 40%;
+  mix-blend-mode: screen;
+  opacity: 0.38;
+  animation: map-life-cascade 2.6s linear infinite;
+}
+.map-life-fall-west {
+  left: 27.6%;
+  top: 9.7%;
+  height: 5%;
+  transform: rotate(-2deg);
+}
+.map-life-fall-north {
+  left: 38.6%;
+  top: 0.2%;
+  height: 5.1%;
+  animation-delay: -0.7s;
+}
+.map-life-waterglint {
+  position: absolute;
+  height: 0.25%;
+  width: 6%;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, #d1ffff8c, transparent);
+  animation: map-life-shimmer 6s ease-in-out infinite;
+}
+.map-life-glint-west {
+  left: 8%;
+  top: 74%;
+  animation-delay: -2s;
+}
+.map-life-glint-south {
+  left: 49%;
+  top: 90%;
+  animation-delay: -4s;
+}
+.map-life-glint-east {
+  left: 82%;
+  top: 88%;
+  animation-delay: -1s;
+}
+.world-map-ambience[data-playing="false"] *,
+.map-life-actor[data-ready="false"] * {
+  animation-play-state: paused;
+}
+@keyframes map-life-frames {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes map-life-patrol {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(var(--life-dx), var(--life-dy));
+  }
+}
+@keyframes map-life-turn {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(-1);
+  }
+}
+@keyframes map-life-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.08cqw);
+  }
+}
+@keyframes map-life-flight {
+  0% {
+    transform: translate(-40cqw, 0);
+    opacity: 0;
+  }
+  5%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--life-dx), var(--life-dy));
+    opacity: 0;
+  }
+}
+@keyframes map-life-cloud {
+  from {
+    transform: translateX(-20cqw);
+  }
+  to {
+    transform: translateX(75cqw);
+  }
+}
+@keyframes map-life-leaf {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0);
+  }
+  15%,
+  75% {
+    opacity: 0.6;
+  }
+  90% {
+    transform: translate(7cqw, 2cqw) rotate(210deg);
+    opacity: 0;
+  }
+}
+@keyframes map-life-cascade {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 180%;
+  }
+}
+@keyframes map-life-shimmer {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: scaleX(0.4);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scaleX(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-map-ambience * {
+    animation: none !important;
+  }
+  .map-life-leaf,
+  .map-life-cloud,
+  .map-life-waterglint,
+  .map-life-waterfall {
+    display: none;
+  }
+}

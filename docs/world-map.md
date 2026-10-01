@@ -18,4 +18,6 @@ Os nomes são texto HTML, sobre a arte, na fonte **Saiyan Sans**, de [Ben Palmer
 
 ## Verificação
 
+A composição animada de fauna, moradores e vegetação está documentada em [world-map-ambience.md](world-map-ambience.md).
+
 `tests/e2e/world-map.spec.ts` verifica carregamento, fonte, ausência de overflow, marcadores sem sobreposição, sprites das cinco raças, caminhada, redirecionamento durante a caminhada, dialog, teclado, bloqueios por nível, área selecionada, navegação sem POST, compra real com desconto de Zeni, inventário, ficha e início de treinamento/descanso com bloqueio de sessões simultâneas. Os testes anteriores de arte e jornada foram atualizados para a nova entrada pelo mapa.
