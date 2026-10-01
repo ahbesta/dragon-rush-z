@@ -84,6 +84,19 @@ test("campanha avançada, vilas, fabricação, comparação, ranking e arena cl�
           await page.getByRole("button", { name: "Comprar", exact: true }).click();
         }
         if (label === "Ranking") await expect(page.locator(".rpg-ranking table")).toBeVisible();
+        if (label === "Inventário") {
+          for (const image of await page.locator(".inventory-grid .item-icon img").all()) {
+            await image.scrollIntoViewIfNeeded();
+            await expect
+              .poll(() =>
+                image.evaluate(
+                  (el) =>
+                    (el as HTMLImageElement).complete && (el as HTMLImageElement).naturalWidth > 0,
+                ),
+              )
+              .toBe(true);
+          }
+        }
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           `${label} overflow ${width}`,
@@ -101,6 +114,52 @@ test("campanha avançada, vilas, fabricação, comparação, ranking e arena cl�
     await page
       .locator(".rpg-heroics")
       .screenshot({ path: ".local/screenshots/classic-heroics.png" });
+    await page.getByRole("button", { name: "Trocar área", exact: true }).click();
+    await page.getByRole("button", { name: /Castelo de Pilaf/ }).click();
+    await page
+      .locator(".enemy-row")
+      .filter({ hasText: "Pilaf" })
+      .getByRole("button", { name: "Desafiar · manual", exact: true })
+      .click();
+    const arena = page.locator(".battle-arena");
+    const pilaf = arena.locator(".enemy .arena-sprite-sheet");
+    await expect(pilaf).toHaveAttribute("src", "/images/classic/pilaf-v2.webp");
+    await expect
+      .poll(() =>
+        pilaf.evaluate(
+          (el) =>
+            (el as HTMLImageElement).complete && (el as HTMLImageElement).naturalWidth === 384,
+        ),
+      )
+      .toBe(true);
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await arena.screenshot({ path: `.local/screenshots/pilaf-repaired-${width}.png` });
+    }
+    for (let turn = 0; turn < 20; turn++) {
+      const current = (await (await page.request.get("/api/game")).json()).snapshot;
+      if (!current.activeBattle) break;
+      const response = await page.request.post("/api/game/actions", {
+        headers: { origin: baseURL! },
+        data: {
+          action: "battle.turn",
+          battleId: current.activeBattle.id,
+          round: current.activeBattle.round,
+          techniqueId: "soco",
+          idempotencyKey: randomUUID(),
+        },
+      });
+      expect(response.ok(), await response.text()).toBe(true);
+    }
+    const finished = (await (await page.request.get("/api/game")).json()).snapshot;
+    expect(finished.activeBattle).toBeNull();
+    await database.db
+      .update(s.characters)
+      .set({ hp: stats.maxHp, ki: stats.maxKi, nextBattleAt: null })
+      .where(eq(s.characters.id, character.id));
     const boss = await page.request.post("/api/game/actions", {
       headers: { origin: baseURL! },
       data: { action: "boss", enemyId: "robo-pirata", idempotencyKey: randomUUID() },

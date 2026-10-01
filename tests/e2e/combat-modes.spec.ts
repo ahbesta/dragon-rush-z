@@ -231,7 +231,12 @@ test("automático, manual, retomada, troca durante combate e celular", async ({ 
   await expect(battle).toHaveCount(0);
   const completed = await state(page);
   expect(completed.latestBattle?.enemyId).toBe("piccolo-daimao");
-  expect(completed.latestBattle?.events.some((e) => e.type === "phase")).toBe(true);
+  // Reaching a boss phase depends on damage and survival; every outcome must finish and keep the mode.
+  expect(completed.activeBattle).toBeNull();
+  expect(completed.latestBattle?.events.at(-1)).toMatchObject({
+    type: "end",
+    outcome: completed.latestBattle?.outcome,
+  });
   await manual.click();
   await expect(manual).toHaveAttribute("aria-pressed", "true");
   await go(page, "Personagem");

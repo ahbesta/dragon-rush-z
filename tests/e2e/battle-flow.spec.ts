@@ -136,6 +136,18 @@ for (const width of [390, 1440])
         expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(stage!.x + stage!.width + 1);
         expect(bounds!.y).toBeGreaterThanOrEqual(stage!.y);
         expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(stage!.y + stage!.height + 1);
+        const alignment = await reveal.locator(".arena-loot-art").evaluate((el) => {
+          const image = el.querySelector(".item-icon")!.getBoundingClientRect();
+          const ring = el.querySelector(".arena-loot-ring")!.getBoundingClientRect();
+          return {
+            x: Math.abs(image.x + image.width / 2 - ring.x - ring.width / 2),
+            y: Math.abs(image.y + image.height / 2 - ring.y - ring.height / 2),
+            contained: image.width <= ring.width && image.height <= ring.height,
+          };
+        });
+        expect(alignment.x).toBeLessThan(1);
+        expect(alignment.y).toBeLessThan(1);
+        expect(alignment.contained).toBe(true);
         await arena.screenshot({
           path: `.local/screenshots/battle-loot-${item.rarity}-${width}.png`,
         });

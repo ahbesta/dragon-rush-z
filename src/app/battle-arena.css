@@ -1127,6 +1127,7 @@
   display: grid;
   place-items: center;
   margin: 12px auto 8px;
+  animation: loot-float 1.8s ease-in-out infinite;
 }
 .arena-loot-art > .item-icon {
   width: 112px;
@@ -1136,7 +1137,7 @@
   border: 0;
   box-shadow: none;
   padding: 0;
-  animation: loot-float 1.8s ease-in-out infinite;
+  margin: 0;
 }
 .arena-loot-art .item-icon img {
   object-fit: contain;
@@ -1173,14 +1174,19 @@
 }
 .arena-loot-ring {
   position: absolute;
-  inset: 12px;
+  inset: 0;
   border: 1px solid var(--loot-color);
   border-radius: 50%;
   opacity: 0.3;
   box-shadow: 0 0 20px var(--loot-glow);
 }
-.loot-rare .arena-loot-ring,
-.loot-epic .arena-loot-ring {
+.loot-rare .arena-loot-ring::after,
+.loot-epic .arena-loot-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: inherit;
+  border-radius: inherit;
   animation: loot-pulse 1.8s ease-out infinite;
 }
 .arena-loot-spark {

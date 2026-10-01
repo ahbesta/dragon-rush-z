@@ -182,31 +182,31 @@ export const itemArtwork: Readonly<Partial<Record<string, GameArtwork>>> = {
     height: 384,
   },
   "pocao-hp": {
-    src: "/images/items/pocao-hp.webp",
+    src: "/images/items/pocao-hp-v2.webp",
     alt: "Frasco de poção de HP vermelha",
     width: 384,
     height: 384,
   },
   "pocao-ki": {
-    src: "/images/items/pocao-ki.webp",
+    src: "/images/items/pocao-ki-v2.webp",
     alt: "Frasco de poção de Ki azul",
     width: 384,
     height: 384,
   },
   "semente-deuses": {
-    src: "/images/items/semente-deuses.webp",
+    src: "/images/items/semente-deuses-v2.webp",
     alt: "Sementes dos Deuses em uma pequena bolsa de tecido",
     width: 384,
     height: 384,
   },
   "armadura-simples": {
-    src: "/images/items/armadura-simples.webp",
+    src: "/images/items/armadura-simples-v2.webp",
     alt: "Colete de armadura simples",
     width: 384,
     height: 384,
   },
   "armadura-saiyajin": {
-    src: "/images/items/armadura-saiyajin.webp",
+    src: "/images/items/armadura-saiyajin-v2.webp",
     alt: "Armadura Saiyajin branca, azul e dourada",
     width: 384,
     height: 384,
@@ -272,9 +272,10 @@ const classicFighters = [
   "oficial-red-ribbon",
 ];
 for (const id of classicFighters) {
+  const filename = id === "pilaf" ? "pilaf-v2" : id;
   Object.assign(enemyArtwork, {
     [id]: {
-      src: `/images/classic/${id}.webp`,
+      src: `/images/classic/${filename}.webp`,
       alt: `Adversário clássico: ${id.replaceAll("-", " ")}`,
       width: 384,
       height: 512,
@@ -282,10 +283,11 @@ for (const id of classicFighters) {
   });
   Object.assign(enemyBattleSprites, {
     [id]: {
-      src: `/images/classic/${id}.webp`,
+      src: `/images/classic/${filename}.webp`,
       alt: `Lutador: ${id.replaceAll("-", " ")}`,
       scale: 1,
       frames: 1,
+      frameWidth: id === "pilaf" ? 150 : 160,
     },
   });
 }
@@ -358,7 +360,7 @@ for (const id of [
 ]) {
   Object.assign(itemArtwork, {
     [id]: {
-      src: `/images/classic-items/${id}.webp`,
+      src: `/images/classic-items/${id}-v2.webp`,
       alt: `Item: ${id.replaceAll("-", " ")}`,
       width: 384,
       height: 384,

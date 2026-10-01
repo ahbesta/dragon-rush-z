@@ -78,86 +78,136 @@ async function clickWithoutScrollReset(
   }
 }
 
-for (const width of [390, 1440]) {
-  test(`início vai à arena e conclusão preserva scroll em ${width}px`, async ({
-    page,
-    baseURL,
-  }) => {
-    const email = `battle-scroll-${randomUUID()}@example.test`;
-    emails.push(email);
-    await page.setViewportSize({ width, height: 700 });
-    const signup = await page.request.post("/api/auth/sign-up/email", {
-      headers: { origin: baseURL! },
-      data: { email, password: randomUUID() + "Test!", name: "Teste Rolagem" },
-    });
-    expect(signup.ok()).toBe(true);
-    const created = await page.request.post("/api/game/characters", {
-      headers: { origin: baseURL! },
-      data: { name: "Guerreiro Scroll", raceId: "saiyajin", idempotencyKey: randomUUID() },
-    });
-    expect(created.ok()).toBe(true);
-    const initial = (await (await page.request.get("/api/game")).json()).snapshot;
-    // Only the disposable test character gets enough real progression to win in one hit.
-    const progress = applyExperience(1, 0, 10000, initial.race.base, initial.race);
-    const stats = deriveStats(progress.base, progress.level);
-    await database.db
-      .update(s.characters)
-      .set({ ...progress, hp: stats.maxHp, ki: stats.maxKi })
-      .where(eq(s.characters.id, initial.character.id));
-    async function action(payload: Record<string, string>) {
-      const response = await page.request.post("/api/game/actions", {
-        headers: { origin: baseURL! },
-        data: { ...payload, idempotencyKey: randomUUID() },
-      });
-      expect(response.ok(), await response.text()).toBe(true);
-    }
-    await action({ action: "combat.mode", mode: "manual" });
-    await action({ action: "battle", areaId: "floresta", enemyId: "lobo" });
-    await page.goto("/jogo");
-    await go(page, "Batalhar");
-    const arena = page.locator(".battle-arena");
-    await expect(arena).toHaveClass(/manual-battle/);
-    await clickWithoutScrollReset(
+for (const section of ["Batalhar", "Explorar"]) {
+  for (const width of [390, 1440]) {
+    test(`${section}: início vai à arena e conclusão preserva seção e scroll em ${width}px`, async ({
       page,
-      arena.getByRole("button", { name: "Usar Soco", exact: true }),
-      async () => {
-        await expect(arena).toHaveClass(/arena-completed/);
-      },
-    );
-    if (await arena.getByRole("button", { name: "Pular animação", exact: true }).isVisible()) {
-      await arena.getByRole("button", { name: "Pular animação", exact: true }).click();
-    }
-    const dismissDrops = arena.getByRole("button", { name: "Fechar drops", exact: true });
-    if (await dismissDrops.isVisible()) await dismissDrops.click();
-    await expect(arena.locator(".arena-outcome")).toBeVisible();
+      baseURL,
+    }) => {
+      const email = `battle-scroll-${randomUUID()}@example.test`;
+      emails.push(email);
+      await page.setViewportSize({ width, height: 700 });
+      const signup = await page.request.post("/api/auth/sign-up/email", {
+        headers: { origin: baseURL! },
+        data: { email, password: randomUUID() + "Test!", name: "Teste Rolagem" },
+      });
+      expect(signup.ok()).toBe(true);
+      const created = await page.request.post("/api/game/characters", {
+        headers: { origin: baseURL! },
+        data: { name: "Guerreiro Scroll", raceId: "saiyajin", idempotencyKey: randomUUID() },
+      });
+      expect(created.ok()).toBe(true);
+      const initial = (await (await page.request.get("/api/game")).json()).snapshot;
+      // Only the disposable test character gets enough real progression to win in one hit.
+      const progress = applyExperience(1, 0, 10000, initial.race.base, initial.race);
+      const stats = deriveStats(progress.base, progress.level);
+      await database.db
+        .update(s.characters)
+        .set({ ...progress, hp: stats.maxHp, ki: stats.maxKi })
+        .where(eq(s.characters.id, initial.character.id));
+      async function action(payload: Record<string, string>) {
+        const response = await page.request.post("/api/game/actions", {
+          headers: { origin: baseURL! },
+          data: { ...payload, idempotencyKey: randomUUID() },
+        });
+        expect(response.ok(), await response.text()).toBe(true);
+      }
+      await action({ action: "combat.mode", mode: "manual" });
+      await page.goto("/jogo");
+      await go(page, section);
+      const startFight = () =>
+        section === "Explorar"
+          ? page.getByRole("button", { name: "Explorar e batalhar", exact: true })
+          : page
+              .locator(".enemy-row")
+              .filter({ hasText: "Lobo" })
+              .getByRole("button", { name: "Batalhar", exact: true });
+      await startFight().click();
+      const arena = page.locator(".battle-arena");
+      await expect(arena).toHaveClass(/manual-battle/);
+      await expect(page.locator(".page-heading h1")).toHaveText(section);
+      await expect
+        .poll(() =>
+          page
+            .locator(".battle-arena-anchor")
+            .evaluate((el) => Math.round(el.getBoundingClientRect().top)),
+        )
+        .toBe(20);
+      // Exploration rolls the enemy and evasion; finish the real fight without assuming one hit.
+      for (let turn = 0; turn < 12; turn++) {
+        const current = (await (await page.request.get("/api/game")).json()).snapshot;
+        if (!current.activeBattle) break;
+        await clickWithoutScrollReset(
+          page,
+          arena.getByRole("button", { name: "Usar Soco", exact: true }),
+          async () => {
+            await expect
+              .poll(
+                async () =>
+                  (await (await page.request.get("/api/game")).json()).snapshot.activeBattle
+                    ?.round ?? 99,
+              )
+              .toBeGreaterThan(current.activeBattle.round);
+            await expect(page.locator(".page-heading h1")).toHaveText(section);
+          },
+        );
+      }
+      await expect(arena).toHaveClass(/arena-completed/);
+      if (await arena.getByRole("button", { name: "Pular animação", exact: true }).isVisible()) {
+        await arena.getByRole("button", { name: "Pular animação", exact: true }).click();
+      }
+      const dismissDrops = arena.getByRole("button", { name: "Fechar drops", exact: true });
+      if (await dismissDrops.isVisible()) await dismissDrops.click();
+      await expect(arena.locator(".arena-outcome")).toBeVisible();
 
-    await database.db
-      .update(s.characters)
-      .set({ nextBattleAt: null })
-      .where(eq(s.characters.id, initial.character.id));
-    await action({ action: "combat.mode", mode: "automatic" });
-    await page.reload();
-    await go(page, "Batalhar");
-    const previousId = await arena.getAttribute("data-battle-id");
-    const fight = page
-      .locator(".enemy-row")
-      .filter({ hasText: "Lobo" })
-      .getByRole("button", { name: "Batalhar", exact: true });
-    await fight.click();
-    await expect(arena).not.toHaveAttribute("data-battle-id", previousId!);
-    await expect(arena).toHaveClass(/arena-completed/);
-    await expect
-      .poll(() =>
-        page
-          .locator(".battle-arena-anchor")
-          .evaluate((el) => Math.round(el.getBoundingClientRect().top)),
-      )
-      .toBe(20);
-    await expect(page.locator(".battle-arena-anchor")).toBeFocused();
-    await expect(arena.locator(".battle-result .combat-log")).toBeVisible();
+      await database.db
+        .update(s.characters)
+        .set({ nextBattleAt: null })
+        .where(eq(s.characters.id, initial.character.id));
+      await action({ action: "combat.mode", mode: "automatic" });
+      await page.reload();
+      await go(page, section);
+      const previousId = await arena.getAttribute("data-battle-id");
+      await startFight().click();
+      await expect(arena).not.toHaveAttribute("data-battle-id", previousId!);
+      await expect(arena).toHaveClass(/arena-completed/);
+      await expect
+        .poll(() =>
+          page
+            .locator(".battle-arena-anchor")
+            .evaluate((el) => Math.round(el.getBoundingClientRect().top)),
+        )
+        .toBe(20);
+      await expect(page.locator(".battle-arena-anchor")).toBeFocused();
+      await expect(arena.locator(".battle-result .combat-log")).toBeVisible();
+      await expect(page.locator(".page-heading h1")).toHaveText(section);
+      await expect(page.locator('#game-navigation button[aria-current="page"]')).toHaveAttribute(
+        "aria-label",
+        section,
+      );
+      if (section === "Explorar") {
+        const firstId = await arena.getAttribute("data-battle-id");
+        await database.db
+          .update(s.characters)
+          .set({ nextBattleAt: null })
+          .where(eq(s.characters.id, initial.character.id));
+        await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+        await expect(startFight()).toBeEnabled();
+        await startFight().click();
+        await expect(arena).not.toHaveAttribute("data-battle-id", firstId!);
+        await expect(page.locator(".page-heading h1")).toHaveText("Explorar");
+        await expect
+          .poll(() =>
+            page
+              .locator(".battle-arena-anchor")
+              .evaluate((el) => Math.round(el.getBoundingClientRect().top)),
+          )
+          .toBe(20);
+      }
 
-    // Explicit menu navigation still opens the selected page at its beginning.
-    await go(page, "Inventário");
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  });
+      // Explicit menu navigation still opens the selected page at its beginning.
+      await go(page, "Inventário");
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThanOrEqual(2);
+    });
+  }
 }

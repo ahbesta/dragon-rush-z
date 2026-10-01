@@ -212,10 +212,12 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
         }
         adopt(data.snapshot);
         if (
-          (data.snapshot.activeBattle?.id !== snapshot.activeBattle?.id &&
+          section !== "explore" &&
+          section !== "battle" &&
+          ((data.snapshot.activeBattle?.id !== snapshot.activeBattle?.id &&
             data.snapshot.activeBattle) ||
-          (data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id &&
-            data.snapshot.latestBattle)
+            (data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id &&
+              data.snapshot.latestBattle))
         )
           go("battle", { scrollToTop: false });
         if (
