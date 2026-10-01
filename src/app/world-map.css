@@ -1,0 +1,588 @@
+@font-face {
+  font-family: "Saiyan Sans";
+  src: url("/fonts/saiyan-sans.ttf") format("truetype");
+  font-display: swap;
+  font-weight: 400;
+}
+.world-map {
+  margin-bottom: 16px;
+}
+.world-map-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.world-map-heading h1 {
+  margin: 10px 0 0;
+  font:
+    400 clamp(32px, 4vw, 52px)/1.1 "Saiyan Sans",
+    "Barlow Condensed",
+    sans-serif;
+  color: #ffe35a;
+  letter-spacing: 2px;
+  -webkit-text-stroke: 1px #6b300f;
+  text-shadow:
+    2px 3px #b4470a,
+    4px 5px #040b16;
+}
+.world-map-heading h1 em {
+  color: #ff9d28;
+  font-style: normal;
+}
+.world-map-planet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a5c8e8;
+  font:
+    700 12px "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 2px;
+}
+.world-map-frame {
+  border: 2px solid #bc853f;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 4px #251d1980,
+    0 18px 50px #0005;
+  background: #081628;
+}
+.world-map-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-color: #bc853f #081628;
+  scrollbar-width: thin;
+}
+.world-map-canvas {
+  position: relative;
+  min-width: 720px;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  isolation: isolate;
+  overflow: hidden;
+}
+.world-map-background {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.map-art-unavailable {
+  background: radial-gradient(ellipse at 50% 50%, #286b38, #1b534b 60%, #0b5273);
+}
+.world-map-node {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  min-width: 112px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 12px 8px;
+  color: #fff6c5;
+  border: 1px solid #ffdf8c;
+  border-radius: 7px;
+  background: linear-gradient(#172d36e8, #071c2ced);
+  box-shadow:
+    0 3px 0 #101b25,
+    0 5px 12px #0005;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.world-map-node strong {
+  font:
+    400 clamp(17px, 1.8vw, 26px)/1.15 "Saiyan Sans",
+    "Barlow Condensed",
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #ffdc47;
+  -webkit-text-stroke: 0.4px #8c3c0a;
+  text-shadow: 1px 2px #6b240a;
+}
+.world-map-node small {
+  font-size: clamp(9px, 0.8vw, 11px);
+  color: #dceef2;
+  white-space: nowrap;
+}
+.world-map-node-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: -10px;
+  top: -13px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #4a260d;
+  background: linear-gradient(135deg, #ffe66d, #ff971f);
+  border: 2px solid #fff4b8;
+  box-shadow: 0 2px 4px #0006;
+}
+.world-map-node-tip {
+  position: absolute;
+  bottom: -7px;
+  left: calc(50% - 6px);
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid #ffdf8c;
+  border-bottom: 1px solid #ffdf8c;
+  transform: rotate(45deg);
+  background: #10222d;
+  z-index: -1;
+}
+.world-map-node:hover,
+.world-map-node.selected {
+  background: linear-gradient(#603e15f0, #2a210cf0);
+  box-shadow:
+    0 3px 0 #764813,
+    0 0 18px #ffcd4760;
+}
+.world-map-node:focus-visible,
+.world-map-shortcuts button:focus-visible,
+.world-map-scroll:focus-visible {
+  outline: 3px solid #fff9ad;
+  outline-offset: 4px;
+}
+.world-map-avatar {
+  position: absolute;
+  z-index: 4;
+  width: 56px;
+  height: 65.333px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+.world-map-avatar-facing {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.world-map-avatar-facing.left {
+  transform: scaleX(-1);
+}
+.world-map-avatar-window {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: #ffe27a;
+  filter: drop-shadow(1px 2px #0008);
+}
+.world-map-avatar .world-map-walk-sheet {
+  display: block;
+  width: 400%;
+  max-width: none;
+  height: 100%;
+  object-fit: fill;
+  image-rendering: pixelated;
+  transform: translateX(-25%);
+}
+.world-map-avatar[data-walking="true"] .world-map-walk-sheet {
+  animation: map-walk-cycle 520ms steps(4) infinite;
+}
+.world-map-avatar-name {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 135px;
+  padding: 3px 7px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: 4px;
+  border: 1px solid #ffe580;
+  background: #0b192dda;
+  color: #fff0b4;
+  font-size: 9px;
+}
+.world-map-avatar-shadow {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  bottom: 5px;
+  height: 7px;
+  border-radius: 50%;
+  background: #0c201168;
+}
+.world-map-you {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #231408;
+  background: #ffe17e;
+  font:
+    800 9px "Inter",
+    sans-serif;
+}
+.world-map-compass {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 47px;
+  height: 47px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #fff1ab90;
+  border-radius: 50%;
+  color: #fff1ab;
+  background: #0b2c45b8;
+  box-shadow: 0 2px 9px #0005;
+}
+.world-map-compass span {
+  position: absolute;
+  top: -11px;
+  font:
+    800 11px "Barlow Condensed",
+    sans-serif;
+}
+.world-map-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 47px;
+  padding: 11px 16px;
+  font-size: 12px;
+  color: #fce5b5;
+  border-top: 1px solid #bc853f;
+}
+.world-map-status small {
+  margin-left: auto;
+  color: #99b1c8;
+  font:
+    600 10px "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 1px;
+}
+.map-status-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffd25c;
+}
+.map-status-dot.walking {
+  animation: map-status-pulse 0.7s ease-in-out infinite alternate;
+}
+.world-map-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+.world-map-shortcuts button {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #35516b;
+  border-radius: 6px;
+  background: #10223a;
+  color: #cde0ee;
+  font:
+    700 14px "Barlow Condensed",
+    sans-serif;
+}
+.world-map-shortcuts button:hover {
+  border-color: #ffd36d;
+  color: #ffe09a;
+  background: #24344a;
+}
+.world-map-journey {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px 0 30px;
+  padding: 14px 18px;
+  border: 1px solid #33445c;
+  border-radius: 8px;
+  background: #0f1b2a;
+}
+.world-map-journey > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #efb84c;
+}
+.world-map-journey p {
+  margin: 0;
+  color: #a7bdd0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.world-map-journey strong {
+  color: #ffe5a6;
+}
+.world-map-journey button {
+  flex: none;
+}
+#character-sheet {
+  scroll-margin-top: 24px;
+}
+.world-map-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(830px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
+  margin: auto;
+  padding: 32px;
+  overflow: auto;
+  border: 1px solid #d49e53;
+  border-radius: 14px;
+  background: linear-gradient(140deg, #142740, #081521);
+  color: #d7e7f1;
+  box-shadow: 0 24px 100px #0009;
+}
+.world-map-dialog::backdrop {
+  background: #020914d9;
+  backdrop-filter: blur(5px);
+}
+.world-map-dialog h2 {
+  margin: 10px 36px 10px 0;
+  color: #ffe089;
+  font:
+    800 34px "Barlow Condensed",
+    sans-serif;
+}
+.world-map-dialog > p {
+  margin: 0 0 20px;
+  color: #b1c5d7;
+  line-height: 1.7;
+}
+.map-dialog-close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: #e8f3fb;
+  border: 1px solid #466078;
+  border-radius: 50%;
+  background: #132942;
+}
+.map-area-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.map-area-option {
+  display: block;
+  overflow: hidden;
+  text-align: left;
+  padding: 0;
+  border: 1px solid #38546b;
+  border-radius: 8px;
+  background: #13243a;
+  color: #c9dce9;
+}
+.map-area-option:hover:not(:disabled) {
+  border-color: #ffd16d;
+  box-shadow: 0 0 20px #ffb83420;
+}
+.map-area-option:disabled {
+  opacity: 0.65;
+}
+.map-area-art {
+  display: block;
+  aspect-ratio: 16 / 8;
+  overflow: hidden;
+  background: #0a1626;
+}
+.map-area-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.map-area-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 15px;
+}
+.map-area-level {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #ffdf8a;
+  font-size: 10px;
+}
+.map-area-copy > strong {
+  color: #fff1c8;
+  font:
+    800 24px "Barlow Condensed",
+    sans-serif;
+}
+.map-area-copy > small {
+  font-size: 11px;
+  line-height: 1.6;
+}
+.map-area-enemies {
+  font-size: 10px;
+  color: #a4bed2;
+}
+.map-area-go {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #ffce76;
+  margin-top: 5px;
+  font:
+    700 13px "Barlow Condensed",
+    sans-serif;
+}
+.map-activity-art {
+  height: 220px;
+  overflow: hidden;
+  border-radius: 8px;
+  margin: 20px 0;
+  border: 1px solid #375470;
+}
+.map-activity-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.map-activity-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 16px 0 24px;
+  color: #a9c7dc;
+}
+.map-activity-details strong {
+  color: #ffe28a;
+}
+.map-activity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.world-map-dialog .map-activity-warning {
+  margin: 22px 0 0;
+  padding: 12px;
+  border: 1px solid #90602d;
+  border-radius: 6px;
+  background: #51320c40;
+  color: #ffda92;
+}
+.technique-market-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 18px;
+  background: #48310f30;
+  border: 1px solid #976827;
+  border-radius: 8px;
+  color: #ffce76;
+}
+.technique-market-heading h2 {
+  font:
+    800 24px "Barlow Condensed",
+    sans-serif;
+  margin: 0 0 4px;
+}
+.technique-market-heading p {
+  margin: 0;
+  color: #c5bda9;
+  font-size: 12px;
+}
+@keyframes map-walk-cycle {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes map-status-pulse {
+  to {
+    opacity: 0.4;
+  }
+}
+@media (max-width: 700px) {
+  .world-map-heading {
+    align-items: flex-start;
+  }
+  .world-map-heading h1 {
+    font-size: 30px;
+  }
+  .world-map-planet {
+    display: none;
+  }
+  .world-map-node {
+    min-width: 105px;
+    padding: 6px 9px;
+  }
+  .world-map-node strong {
+    font-size: 18px;
+  }
+  .world-map-node small {
+    font-size: 9px;
+  }
+  .world-map-status {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+  .map-status-dot {
+    margin-top: 3px;
+  }
+  .world-map-status small {
+    margin-left: 16px;
+    width: 100%;
+    font-size: 9px;
+  }
+  .world-map-shortcuts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .world-map-shortcuts button {
+    min-height: 44px;
+  }
+  .world-map-journey {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+  .world-map-dialog {
+    padding: 26px 18px;
+  }
+  .world-map-dialog h2 {
+    font-size: 28px;
+  }
+  .map-area-grid {
+    grid-template-columns: 1fr;
+  }
+  .map-area-art {
+    aspect-ratio: 16 / 7;
+  }
+  .map-activity-actions button {
+    flex: 1 0 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .world-map-avatar[data-walking="true"] .world-map-walk-sheet,
+  .map-status-dot.walking {
+    animation: none;
+  }
+}

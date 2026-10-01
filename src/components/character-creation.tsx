@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, LogOut, Shield, LoaderCircle } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Check, LogOut, Shield, LoaderCircle, Settings } from "lucide-react";
 import type { RaceDefinition } from "@/game/types";
 import { authClient } from "@/lib/auth-client";
 import { Brand } from "./brand";
@@ -50,15 +51,29 @@ export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
     <main className="creation-screen">
       <header className="creation-header">
         <Brand />
-        <button
-          className="text-button"
-          onClick={async () => {
-            await authClient.signOut();
-            router.push("/login");
-          }}
-        >
-          <LogOut size={16} /> Sair
-        </button>
+        <div className="creation-account-actions">
+          <Link
+            href="/perfil"
+            prefetch={false}
+            className="text-button"
+            onNavigate={(event) => {
+              event.preventDefault();
+              // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Perfil precisa de uma nova leitura da sessão e do personagem.
+              window.location.assign("/perfil");
+            }}
+          >
+            <Settings size={16} /> Perfil
+          </Link>
+          <button
+            className="text-button"
+            onClick={async () => {
+              await authClient.signOut();
+              router.push("/login");
+            }}
+          >
+            <LogOut size={16} /> Sair
+          </button>
+        </div>
       </header>
       <div className="creation-content">
         <span className="eyebrow orange">01 / CRIAÇÃO DE PERSONAGEM</span>

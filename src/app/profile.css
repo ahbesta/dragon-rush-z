@@ -1,0 +1,215 @@
+.profile-screen {
+  min-height: 100svh;
+}
+.profile-header {
+  display: flex;
+  height: auto;
+  min-height: 110px;
+  padding: 25px max(24px, calc((100% - 1160px) / 2));
+  flex-wrap: wrap;
+}
+.profile-header > a {
+  position: relative;
+  z-index: 1;
+}
+.profile-main {
+  max-width: 1208px;
+  margin: 0 auto;
+  padding: 36px 24px 64px;
+}
+.profile-heading {
+  margin-bottom: 28px;
+}
+.profile-heading h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0;
+  font-size: 40px;
+}
+.profile-heading h1 > svg {
+  width: 30px;
+  height: 30px;
+  color: var(--orange);
+}
+.profile-heading > p {
+  color: var(--muted);
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.profile-card {
+  padding: 26px;
+  min-width: 0;
+  border-top: 3px solid var(--orange);
+}
+.profile-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 22px;
+  font-size: 26px;
+}
+.profile-card h2 > svg {
+  color: var(--orange);
+  flex-shrink: 0;
+}
+.profile-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.profile-card label {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.profile-card input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  font-size: 16px;
+}
+.profile-card input[readonly] {
+  color: var(--muted);
+  background: #0a1425;
+}
+.profile-card input + label {
+  margin-top: 10px;
+}
+.profile-card .button {
+  align-self: flex-start;
+  margin-top: 12px;
+  min-height: 44px;
+}
+.profile-hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+.profile-password-toggle {
+  align-self: flex-start;
+  min-height: 40px;
+}
+.profile-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 12px 0 0;
+}
+.profile-feedback > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.profile-feedback.success {
+  color: var(--green);
+}
+.profile-feedback.error {
+  color: #ffa6a6;
+}
+.profile-warrior {
+  border-top-color: var(--blue);
+}
+.profile-warrior-identity {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.profile-warrior-identity h3 {
+  font-size: 28px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.profile-warrior-identity p {
+  color: var(--muted);
+  font-size: 13px;
+}
+.profile-race-emblem {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  font-size: 34px;
+  border: 2px solid #ffbd58;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffbf45, #df6816);
+  color: #391b08;
+  box-shadow: 0 0 24px #ff8c242c;
+}
+.profile-warrior-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  margin: 22px 0;
+}
+.profile-warrior-stats dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.profile-warrior-stats dd {
+  margin: 4px 0 0;
+  color: var(--game-gold);
+  font:
+    700 28px "Barlow Condensed",
+    sans-serif;
+}
+.profile-warrior > p {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.profile-combat {
+  min-width: 0;
+}
+.profile-combat .combat-mode-panel {
+  margin: 0;
+  flex-direction: column;
+  align-items: stretch;
+}
+.profile-combat .combat-mode-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.creation-account-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+@media (max-width: 700px) {
+  .creation-header {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .profile-header {
+    min-height: 110px;
+    padding: 20px 16px;
+    gap: 18px;
+  }
+  .profile-main {
+    padding: 28px 16px 40px;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .profile-card {
+    padding: 22px 18px;
+  }
+  .profile-combat .combat-mode-options {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 420px) {
+  .creation-account-actions {
+    gap: 10px;
+  }
+  .creation-account-actions .text-button {
+    font-size: 11px;
+  }
+}

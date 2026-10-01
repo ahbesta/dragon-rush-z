@@ -52,11 +52,11 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
   await page.getByLabel("Nome do guerreiro").fill("Rafael");
   await page.getByRole("button", { name: /Começar minha jornada/ }).click();
   await expect(page.getByRole("heading", { name: "Olá, Rafael." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "ESCREVA A SUA LENDA." })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Abrir treinamento" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Abrir explorar a terra" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Abrir batalhar" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Abrir técnicas" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "EXPLORE A TERRA" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mapa: Treinamento" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mapa: Explorar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mapa: Batalhar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mapa: Mercado" })).toBeVisible();
   await page.screenshot({ path: ".local/screenshots/dashboard-desktop.png", fullPage: true });
   const [owner] = await database.db.select().from(s.user).where(eq(s.user.email, email));
   ownerId = owner.id;
@@ -220,7 +220,7 @@ test("jornada real: conta, raça, treino, nível, técnicas, equipamento e boss"
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
     await page.screenshot({ path: `.local/screenshots/lobby-${width}.png`, fullPage: true });
-    await page.getByRole("button", { name: "Abrir técnicas", exact: true }).click();
+    await page.getByRole("button", { name: "Mapa: Mercado", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Técnicas", exact: true })).toBeVisible();
   }
   await page.setViewportSize({ width: 390, height: 844 });

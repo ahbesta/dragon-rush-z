@@ -4,6 +4,7 @@ O portal usa arquivos WebP locais em `public/images`, sem carregar imagens de se
 
 ## Arquivos e origem
 
+- `world-map/terra.webp` e `world-map/{saiyajin,humano,namekuseijin,majin,freeza}.webp`: mapa ilustrado e ciclos de caminhada por raça, gerados e revisados com imagegen integrado. Ver [world-map.md](world-map.md) para revisão, prompts, tipografia e comportamento.
 - `activities/{treino-kame,descanso-kame}.webp`: atlas de seis quadros por cena, gerados com imagegen integrado para o treinamento clássico do Mestre Kame e o descanso da turma na banheira da Kame House. Reprodução, condições de visibilidade e prompts estão em [activity-animations.md](activity-animations.md).
 - `dragon-ball-menu.webp`: atlas original de Goku, Bulma, Vegeta e Piccolo, gerado com a ferramenta integrada **imagegen** (modo integrado, sem CLI).
 - `characters/{goku,bulma,vegeta,piccolo}.webp`: retratos extraídos do atlas, usados individualmente no login para não mostrar pedaços do personagem vizinho.

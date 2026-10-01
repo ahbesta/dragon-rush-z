@@ -1,0 +1,11 @@
+# Perfil da conta
+
+`/perfil` exige uma sessão válida no servidor e pode ser acessado pelo menu do jogo ou pelo cabeçalho da criação de personagem. A tela permite editar o nome da conta, consultar o email e o guerreiro e salvar a preferência de combate. O nome da conta é independente do nome do personagem. Os links entre Perfil e jogo fazem navegação completa, sem prefetch, para buscar o estado atual do servidor e preservar as alterações durante a navegação.
+
+A atualização de nome usa `/api/auth/update-user` do Better Auth. O hook `databaseHooks.user.update.before` valida e normaliza o nome no servidor, inclusive em chamadas diretas à API. O schema compartilhado em `src/lib/account-validation.ts` aceita de 2 a 60 caracteres e recusa caracteres de controle. A preferência de combate usa a ação existente `combat.mode`, com validação de propriedade, persistência e idempotência no servidor. Assumir o modo automático durante uma batalha manual conclui essa batalha, conforme explicado no seletor existente.
+
+A troca de senha usa `/api/auth/change-password`. A autenticação valida a sessão, origem, senha atual e comprimento da nova senha, faz o hash e persiste a credencial. O formulário exige confirmação da nova senha, informa falhas em português e limpa os campos após sucesso. `revokeOtherSessions: true` encerra as sessões anteriores e emite uma nova sessão para o navegador atual. Nenhuma senha ou token é salvo no estado persistente do navegador ou nos logs da aplicação. Os endpoints de edição têm limites de requisições persistidos no PostgreSQL.
+
+Não são necessárias migrations nem variáveis de ambiente novas. Permanecem `DATABASE_URL`, `BETTER_AUTH_SECRET` e `BETTER_AUTH_URL`, usando a URL local durante desenvolvimento e a URL pública na Vercel.
+
+`tests/account-validation.test.ts` verifica normalização, limites, caracteres inválidos e confirmação de senha. `tests/e2e/profile.spec.ts` usa somente uma conta descartável para validar proteção de página e APIs, acesso antes da criação do personagem, atualização e persistência de nome, rejeição de requisições inválidas, preferência de combate, senha atual incorreta, nova senha curta, mostrar/ocultar senhas, troca real, revogação de outra sessão, login com a nova senha, rejeição da antiga, preservação de progresso e inventário, navegação e telas de 320 a 1440 pixels.

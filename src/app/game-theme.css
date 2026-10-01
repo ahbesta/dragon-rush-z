@@ -1169,19 +1169,25 @@ input:focus {
   .game-navigation {
     grid-row: 2;
     grid-column: 1 / -1;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
     border-top: 1px solid #20314c;
     padding: 10px 0;
     width: 100%;
   }
   .game-navigation .nav-item {
-    flex-direction: row;
-    min-height: 38px;
+    flex-direction: column;
+    min-height: 56px;
     padding: 10px 12px;
   }
   .game-navigation .nav-coming-soon {
     bottom: -3px;
     font-size: 5px;
+  }
+  .game-navigation .nav-signout {
+    margin-left: 0;
+    border-left: 0;
   }
   .lobby-hero-copy {
     padding: 32px;
@@ -1326,6 +1332,7 @@ input:focus {
   }
   .game-navigation .nav-item {
     padding: 13px;
+    flex-direction: row;
     font-size: 17px;
     justify-content: flex-start;
     background: #14233b;
@@ -1340,7 +1347,9 @@ input:focus {
     background: linear-gradient(135deg, #ffb935, #ff871e);
   }
   .game-navigation .nav-coming-soon {
-    position: static;
+    position: absolute;
+    right: 6px;
+    bottom: 3px;
     font-size: 5px;
     margin-left: auto;
   }
@@ -1348,6 +1357,14 @@ input:focus {
     grid-column: 1 / -1;
     justify-content: center;
     border-radius: 5px;
+  }
+}
+
+@media (max-width: 420px) {
+  .game-navigation .nav-item {
+    padding: 12px 8px;
+    gap: 6px;
+    font-size: 15px;
   }
 }
 

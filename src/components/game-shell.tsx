@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   ArrowRight,
   ArrowUp,
@@ -19,6 +20,8 @@ import {
   Menu,
   Package,
   ScrollText,
+  Settings,
+  Store,
   Shield,
   Sparkles,
   Swords,
@@ -276,6 +279,19 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 )}
               </button>
             ))}
+            <Link
+              href="/perfil"
+              prefetch={false}
+              className="nav-item nav-profile"
+              onNavigate={(event) => {
+                event.preventDefault();
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- Perfil precisa de uma nova leitura da sessão e do personagem.
+                window.location.assign("/perfil");
+              }}
+            >
+              <Settings size={17} />
+              <span>Perfil</span>
+            </Link>
             <button
               className="nav-item nav-signout"
               aria-label="Sair da conta"
@@ -424,10 +440,22 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 snapshot={snapshot}
                 busy={busy}
                 onNavigate={go}
+                onAreaSelect={(mode, selectedAreaId) => {
+                  setAreaId(selectedAreaId);
+                  go(mode);
+                }}
+                onCharacter={() =>
+                  document.getElementById("character-sheet")?.scrollIntoView({
+                    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                      ? "instant"
+                      : "smooth",
+                    block: "start",
+                  })
+                }
                 onTrain={() => act({ action: "training.start" })}
                 onRest={() => act({ action: "rest.start" })}
               />
-              <div className="lobby-character-heading">
+              <div className="lobby-character-heading" id="character-sheet">
                 <h2>Olá, {c.name}.</h2>
                 <span>SEU GUERREIRO · {snapshot.race.name.toUpperCase()}</span>
               </div>
@@ -960,6 +988,15 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
 
           {section === "techniques" && (
             <>
+              <div className="technique-market-heading">
+                <Store size={28} />
+                <div>
+                  <h2>Mercado de técnicas</h2>
+                  <p>
+                    Invista seus Zeni em novos golpes. Cada técnica tem seus próprios requisitos.
+                  </p>
+                </div>
+              </div>
               <section className="panel technique-priority">
                 <div>
                   <span className="eyebrow orange">SUA ESTRATÉGIA</span>

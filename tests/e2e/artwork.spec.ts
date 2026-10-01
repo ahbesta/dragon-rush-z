@@ -114,7 +114,7 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
     await page.setViewportSize({ width, height: 900 });
     await go(page, "Personagem");
     await expect(page.locator(".hero-fighter-names, .lobby-world-label")).toHaveCount(0);
-    await expect(page.locator(".hero-fighter")).toHaveCount(3);
+    await expect(page.locator(".world-map-node")).toHaveCount(7);
     expect(
       await page.evaluate(() =>
         Array.from(document.querySelectorAll("*"))
@@ -122,7 +122,7 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
           .map((element) => element.className),
       ),
     ).toEqual(["game-header"]);
-    await loadedImages(page, ".lobby-tile-art img", 4);
+    await loadedImages(page, ".world-map-background, .world-map-walk-sheet", 2);
     await loadedImages(page, ".boss-teaser-art img", 1);
     await page.screenshot({ path: `.local/screenshots/art-home-${width}.png`, fullPage: true });
 
