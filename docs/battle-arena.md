@@ -29,6 +29,8 @@ O histórico manual fica aberto dentro da arena. A rolagem automática acompanha
 
 O círculo principal mantém seu tamanho e centro. O halo pulsa em uma camada separada, e a flutuação move o conjunto completo de círculo e item. A apresentação remove a margem herdada dos cartões de inventário.
 
+O tempo de exibição de cada drop começa após a arte carregar, com um indicador durante a revelação. Uma imagem lenta não faz o item desaparecer antes de ser visto. Uma falha de imagem libera o ícone de fallback, e Escape continua disponível durante o carregamento. O teste de fluxo retém a primeira imagem por mais tempo que a duração normal do anúncio para verificar esse comportamento.
+
 ## Compatibilidade
 
 Os eventos `start` têm campos opcionais de Ki e máximos de HP/Ki. Os eventos de regeneração podem informar `remainingHp`. O contexto mantém `areaId`, incluindo o resultado salvo. Todos são campos JSON adicionais: os logs e combates ativos antigos continuam compatíveis, sem migration de banco. Logs antigos usam os recursos disponíveis como fallback; lutas novas preservam os máximos originais mesmo após subir de nível.

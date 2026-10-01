@@ -6,6 +6,7 @@ import * as s from "../../src/server/db/schema";
 import { applyExperience } from "./progress-fixture";
 import { deriveBuildStats } from "../../src/game/attributes";
 import type { GameSnapshot } from "../../src/game/types";
+import { itemArtwork } from "../../src/lib/game-art";
 
 for (const width of [390, 1440])
   test(`fluxo de áreas, chegada à arena e drops por raridade em ${width}px`, async ({
@@ -15,6 +16,7 @@ for (const width of [390, 1440])
     const database = createDatabase(process.env.DATABASE_URL!);
     const email = `battle-flow-${randomUUID()}@example.test`;
     let ownerId: string | undefined;
+    let releaseArtwork = () => {};
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     try {
@@ -91,6 +93,17 @@ for (const width of [390, 1440])
       const expectedItems = (["common", "uncommon", "rare", "epic"] as const).map((rarity) =>
         initial.catalog.items.find((item) => item.rarity === rarity)!,
       );
+      const artworkGate = new Promise<void>((resolve) => {
+        releaseArtwork = resolve;
+      });
+      await page.route("**/_next/image?*", async (route) => {
+        if (
+          new URL(route.request().url()).searchParams.get("url") ===
+          itemArtwork[expectedItems[0].id]?.src
+        )
+          await artworkGate;
+        await route.continue();
+      });
       let presented: GameSnapshot | undefined;
       await page.route("**/api/game/actions", async (route) => {
         const response = await route.fetch();
@@ -124,11 +137,25 @@ for (const width of [390, 1440])
         .toBe(20);
       if (await arena.getByRole("button", { name: "Pular animação", exact: true }).isVisible())
         await arena.getByRole("button", { name: "Pular animação", exact: true }).click();
+      const firstReveal = arena.locator(".arena-loot-reveal");
+      await expect(firstReveal.locator(".arena-loot-art")).toHaveAttribute("data-ready", "false");
+      await page.waitForTimeout(2800); // Longer than the common drop's normal display duration.
+      await expect(firstReveal).toHaveAttribute("data-item-id", expectedItems[0].id);
+      releaseArtwork();
       const before = await state();
       for (const item of expectedItems) {
         const reveal = arena.locator(".arena-loot-reveal");
         await expect(reveal).toHaveAttribute("data-rarity", item.rarity);
         await expect(reveal).toHaveAttribute("data-item-id", item.id);
+        await expect(reveal.locator(".arena-loot-art")).toHaveAttribute("data-ready", "true");
+        expect(
+          await reveal
+            .locator(".item-icon img")
+            .evaluate(
+              (el) =>
+                (el as HTMLImageElement).complete && (el as HTMLImageElement).naturalWidth > 0,
+            ),
+        ).toBe(true);
         await expect(reveal.getByRole("heading", { name: item.name, exact: true })).toBeVisible();
         const bounds = await reveal.locator(".arena-loot-card").boundingBox(),
           stage = await arena.locator(".battle-stage").boundingBox();
@@ -181,6 +208,7 @@ for (const width of [390, 1440])
       );
       expect(errors).toEqual([]);
     } finally {
+      releaseArtwork();
       if (ownerId) {
         await database.db.delete(s.user).where(eq(s.user.id, ownerId));
         await database.db.delete(s.rateLimit).where(eq(s.rateLimit.key, `game:${ownerId}`));

@@ -1143,6 +1143,14 @@
   object-fit: contain;
   filter: drop-shadow(0 0 12px var(--loot-glow));
 }
+.arena-loot-art[data-ready="false"] > .item-icon {
+  opacity: 0;
+}
+.arena-loot-loading {
+  position: absolute;
+  color: var(--loot-color);
+  animation: loot-spin 1s linear infinite;
+}
 .arena-loot-quantity {
   position: absolute;
   bottom: 8px;

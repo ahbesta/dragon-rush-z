@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, type CSSProperties } from "react";
-import { ArrowRight, Check, X } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { ArrowRight, Check, LoaderCircle, X } from "lucide-react";
 import type { BattleResult, ItemDefinition, Rarity } from "@/game/types";
 import { ItemIcon } from "./game-primitives";
 
@@ -22,21 +22,42 @@ export function BattleLootReveal({
   reveal: boolean;
 }) {
   const [index, setIndex] = useState<number | null>(0);
+  const [readyFor, setReadyFor] = useState<string | null>(null);
+  const art = useRef<HTMLDivElement>(null);
   const drop = index === null ? undefined : battle.drops[index];
   const item = items.find((i) => i.id === drop?.itemId);
+  const revealKey = `${battle.id}-${index}`;
+  const artReady = readyFor === revealKey;
   const advance = () =>
     setIndex((current) =>
       current === null || current + 1 >= battle.drops.length ? null : current + 1,
     );
   useEffect(() => {
+    if (!enabled || !reveal || !drop || index === null) return;
+    const image = art.current?.querySelector("img");
+    const ready = () => setReadyFor(revealKey);
+    if (!image || image.complete) {
+      ready();
+      return;
+    }
+    image.addEventListener("load", ready);
+    image.addEventListener("error", ready);
+    return () => {
+      image.removeEventListener("load", ready);
+      image.removeEventListener("error", ready);
+    };
+  }, [enabled, reveal, drop, index, revealKey]);
+  useEffect(() => {
     if (!enabled || !reveal || index === null || !drop) return;
-    const timer = setTimeout(
-      () =>
-        setIndex((current) =>
-          current === null || current + 1 >= battle.drops.length ? null : current + 1,
-        ),
-      item?.rarity === "epic" ? 3800 : item?.rarity === "rare" ? 3200 : 2500,
-    );
+    const timer = artReady
+      ? setTimeout(
+          () =>
+            setIndex((current) =>
+              current === null || current + 1 >= battle.drops.length ? null : current + 1,
+            ),
+          item?.rarity === "epic" ? 3800 : item?.rarity === "rare" ? 3200 : 2500,
+        )
+      : undefined;
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIndex(null);
     };
@@ -45,7 +66,7 @@ export function BattleLootReveal({
       clearTimeout(timer);
       window.removeEventListener("keydown", escape);
     };
-  }, [enabled, reveal, index, drop, item?.rarity, battle.drops.length]);
+  }, [enabled, reveal, index, drop, item?.rarity, battle.drops.length, artReady]);
   if (!enabled || !reveal || !drop || index === null) return null;
   const rarity = item?.rarity ?? "common";
   return (
@@ -72,7 +93,7 @@ export function BattleLootReveal({
         <span className="arena-loot-eyebrow">
           ITEM OBTIDO · {index + 1}/{battle.drops.length}
         </span>
-        <div className="arena-loot-art">
+        <div ref={art} className="arena-loot-art" data-ready={artReady}>
           <span className="arena-loot-rays" aria-hidden="true" />
           <span className="arena-loot-ring" aria-hidden="true" />
           {Array.from({ length: 8 }, (_, i) => (
@@ -86,6 +107,9 @@ export function BattleLootReveal({
             />
           ))}
           <ItemIcon item={item} showcase />
+          {!artReady && (
+            <LoaderCircle className="arena-loot-loading" size={28} aria-label="Revelando item" />
+          )}
           <span className="arena-loot-quantity">×{drop.quantity}</span>
         </div>
         <strong className="arena-loot-rarity">{rarityNames[rarity]}</strong>
@@ -93,7 +117,7 @@ export function BattleLootReveal({
         <span className="arena-loot-saved">
           <Check size={12} /> Adicionado à mochila
         </span>
-        <button className="arena-loot-next" onClick={advance}>
+        <button className="arena-loot-next" onClick={advance} disabled={!artReady}>
           {index + 1 < battle.drops.length ? "Próximo item" : "Continuar"}
           <ArrowRight size={14} />
         </button>
