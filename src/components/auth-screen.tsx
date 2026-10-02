@@ -1,11 +1,9 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ShieldCheck, Swords, Zap, LoaderCircle } from "lucide-react";
+import Image from "next/image";
+import { ChevronsRight, LoaderCircle, LockKeyhole, Mail, Star, UserRound } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
-import { Brand } from "./brand";
-import { ArtworkImage } from "./artwork-image";
-import { characterArtwork } from "@/lib/game-art";
 
 export function AuthScreen() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -45,54 +43,62 @@ export function AuthScreen() {
     }
   }
   return (
-    <main className="auth-layout">
-      <section className="auth-art">
-        <Brand light />
-        <div className="auth-world-art" aria-hidden="true" />
-        <div className="auth-fighters" aria-hidden="true">
-          <ArtworkImage art={characterArtwork.goku} sizes="(max-width: 700px) 28vw, 15vw" preload />
-          <ArtworkImage art={characterArtwork.vegeta} sizes="(max-width: 700px) 28vw, 15vw" />
-          <ArtworkImage art={characterArtwork.piccolo} sizes="(max-width: 700px) 28vw, 15vw" />
-        </div>
-        <div className="auth-story">
-          <span className="eyebrow">UM NOVO GUERREIRO. UMA NOVA HISTÓRIA.</span>
-          <h1>
-            SUA LENDA
-            <br />
-            <em>COMEÇA AGORA.</em>
+    <main className="entry-screen" data-mode={mode}>
+      <div className="entry-scenery" aria-hidden="true">
+        <Image
+          src="/images/login/nimbus-journey.webp"
+          alt=""
+          width={1672}
+          height={941}
+          sizes="(max-width: 700px) 150vw, 100vw"
+          preload
+          className="entry-illustration"
+        />
+      </div>
+      <header className="entry-masthead">
+        <div>
+          <h1 className="entry-logo" aria-label="Dragon Rush Z">
+            <span>DRAGON</span> <span className="entry-logo-rush">RUSH</span> <b>Z</b>
           </h1>
+          <p>UMA JORNADA NO UNIVERSO DE DRAGON BALL</p>
+        </div>
+        <span className="entry-edition">RPG DE NAVEGADOR</span>
+      </header>
+      <div className="entry-content">
+        <div className="entry-invitation">
+          <span>A AVENTURA ESTÁ SÓ COMEÇANDO</span>
           <p>
-            Escolha sua raça. Domine seu Ki. Explore a Terra.
-            <br />E descubra até onde seu poder pode chegar.
+            O mundo é grande.
+            <br />
+            Seu potencial também.
           </p>
-          <div className="auth-features">
-            <span>
-              <Swords size={17} /> COMBATES
-            </span>
-            <span>
-              <Zap size={17} /> EVOLUÇÃO
-            </span>
-            <span>
-              <ShieldCheck size={17} /> EXPLORAÇÃO
+        </div>
+        <section className="entry-panel" aria-labelledby="entry-form-title">
+          <div className="entry-panel-heading">
+            <div>
+              <span className="entry-chapter">
+                {mode === "login" ? "DE VOLTA À AVENTURA" : "UMA NOVA JORNADA"}
+              </span>
+              <h2 id="entry-form-title">
+                {mode === "login" ? "Continue sua jornada." : "Prepare-se, guerreiro."}
+              </h2>
+            </div>
+            <span className="entry-seal" aria-hidden="true">
+              {Array.from({ length: 4 }, (_, index) => (
+                <Star key={index} fill="currentColor" strokeWidth={0} />
+              ))}
             </span>
           </div>
-        </div>
-      </section>
-      <section className="auth-form-side">
-        <span className="auth-edition">
-          DRAGON RUSH Z <span>PRIMEIRA JORNADA</span>
-        </span>
-        <div className="auth-form-wrap">
-          <span className="eyebrow orange">PRONTO PARA SUPERAR SEUS LIMITES?</span>
-          <h2>{mode === "login" ? "Bem-vindo de volta." : "Sua lenda começa aqui."}</h2>
           <p>
             {mode === "login"
-              ? "Entre na sua conta e continue sua jornada."
-              : "Crie sua conta para entrar no mundo de Dragon Ball."}
+              ? "Sua próxima conquista está logo ali."
+              : "Crie sua conta e encontre seu próprio caminho."}
           </p>
-          <div className="auth-tabs">
+          <div className="entry-switch" role="group" aria-label="Acesso ao jogo">
             <button
-              className={mode === "login" ? "active" : ""}
+              type="button"
+              aria-pressed={mode === "login"}
+              disabled={busy}
               onClick={() => {
                 setMode("login");
                 setError("");
@@ -101,7 +107,9 @@ export function AuthScreen() {
               Entrar
             </button>
             <button
-              className={mode === "signup" ? "active" : ""}
+              type="button"
+              aria-pressed={mode === "signup"}
+              disabled={busy}
               onClick={() => {
                 setMode("signup");
                 setError("");
@@ -110,68 +118,80 @@ export function AuthScreen() {
               Criar conta
             </button>
           </div>
-          <form onSubmit={submit}>
+          <form onSubmit={submit} aria-busy={busy}>
             {mode === "signup" && (
-              <label>
+              <label className="entry-field">
                 Seu nome
-                <input
-                  name="name"
-                  required
-                  minLength={2}
-                  maxLength={50}
-                  placeholder="Como podemos chamar você?"
-                  autoComplete="name"
-                />
+                <span className="entry-input">
+                  <UserRound size={18} aria-hidden="true" />
+                  <input
+                    name="name"
+                    required
+                    minLength={2}
+                    maxLength={50}
+                    placeholder="Como podemos chamar você?"
+                    autoComplete="name"
+                  />
+                </span>
               </label>
             )}
-            <label>
+            <label className="entry-field">
               Email
-              <input
-                name="email"
-                type="email"
-                required
-                placeholder="voce@email.com"
-                autoComplete="email"
-              />
+              <span className="entry-input">
+                <Mail size={18} aria-hidden="true" />
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="voce@email.com"
+                  autoComplete="email"
+                />
+              </span>
             </label>
-            <label>
+            <label className="entry-field">
               Senha
-              <input
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                maxLength={128}
-                placeholder="Pelo menos 8 caracteres"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-              />
+              <span className="entry-input">
+                <LockKeyhole size={18} aria-hidden="true" />
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  maxLength={128}
+                  placeholder="Pelo menos 8 caracteres"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                />
+              </span>
             </label>
             {error && (
-              <p role="alert" className="form-error">
+              <p role="alert" className="entry-error">
                 {error}
               </p>
             )}
-            <button className="button primary auth-submit" disabled={busy}>
+            <button className="entry-submit" disabled={busy}>
               {busy ? (
-                <LoaderCircle className="spin" size={19} />
+                <>
+                  {mode === "login" ? "Entrando…" : "Criando conta…"}
+                  <LoaderCircle className="entry-spinner" size={22} aria-hidden="true" />
+                </>
               ) : (
                 <>
                   {mode === "login" ? "Entrar no jogo" : "Criar minha conta"}
-                  <ArrowRight size={19} />
+                  <ChevronsRight size={24} aria-hidden="true" />
                 </>
               )}
             </button>
           </form>
-          <div className="auth-foot">
-            <span className="status-dot" /> SEU PROGRESSO CONTINUA DE ONDE VOCÊ PAROU.
-          </div>
-        </div>
-        <footer>
-          Um RPG de navegador no universo de Dragon Ball.
-          <br />
-          <span>Treine hoje. Fique mais forte amanhã.</span>
-        </footer>
-      </section>
+          <p className="entry-save-note">
+            <Star size={13} aria-hidden="true" />
+            Sua jornada fica salva. Volte quando quiser.
+          </p>
+        </section>
+      </div>
+      <footer className="entry-footer">
+        <span>Uma aventura de fã. Um universo de possibilidades.</span>
+        <span>TREINE. LUTE. SUPERE.</span>
+      </footer>
     </main>
   );
 }

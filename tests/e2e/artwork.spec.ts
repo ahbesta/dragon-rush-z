@@ -54,22 +54,11 @@ test("artes de áreas, atividades, inimigos e técnicas; Shenlong restrito ao me
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/login");
-    await loadedImages(page, ".auth-fighters img", 3);
-    expect(
-      await page.locator(".auth-fighters").evaluate((container) => {
-        const bounds = container.getBoundingClientRect();
-        return Array.from(container.querySelectorAll("img")).every((image) => {
-          const rect = image.getBoundingClientRect();
-          return (
-            rect.left >= bounds.left - 1 &&
-            rect.right <= bounds.right + 1 &&
-            rect.top >= bounds.top - 1 &&
-            rect.bottom <= bounds.bottom + 1 &&
-            getComputedStyle(image).objectFit === "contain"
-          );
-        });
-      }),
-    ).toBe(true);
+    await loadedImages(page, ".entry-illustration", 1);
+    await expect(page.locator(".entry-illustration")).toHaveAttribute(
+      "src",
+      /login%2Fnimbus-journey|login\/nimbus-journey/,
+    );
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
