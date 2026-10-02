@@ -1155,7 +1155,7 @@ input:focus {
   color: #b7c6dc;
 }
 
-@media (max-width: 1250px) {
+@media (max-width: 1400px) {
   .game-header {
     grid-template-columns: auto auto;
     justify-content: space-between;

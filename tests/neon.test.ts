@@ -9,6 +9,85 @@ let database: Database;
 let owner: string;
 const fixtureOwners: string[] = [];
 describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neon real", () => {
+  it("início concorrente mantém um único encontro e sorteio", async () => {
+    const input = { action: "exploration.start", areaId: "floresta", idempotencyKey: randomUUID() };
+    const results = await Promise.all(
+      [0, 1, 2, 3].map(() => executeAction(database.db, owner, input, { random: () => 0.1 })),
+    );
+    expect(results[0]).toEqual(results[1]);
+    const snap = (await readSnapshot(database.db, owner))!;
+    expect(snap.activeExploration?.category).toBe("gather");
+    expect(snap.catalog.explorationEvents).toBeUndefined();
+    expect(
+      await database.db
+        .select()
+        .from(s.explorationSessions)
+        .where(eq(s.explorationSessions.characterId, snap.character.id)),
+    ).toHaveLength(1);
+  });
+  it("escolhas concorrentes com chaves diferentes avançam apenas uma etapa", async () => {
+    await executeAction(
+      database.db,
+      owner,
+      { action: "exploration.start", areaId: "floresta", idempotencyKey: randomUUID() },
+      { random: () => 0.1 },
+    );
+    const id = (await readSnapshot(database.db, owner))!.activeExploration!.id;
+    const results = await Promise.allSettled(
+      [0, 1, 2].map(() =>
+        executeAction(database.db, owner, {
+          action: "exploration.choose",
+          encounterId: id,
+          revision: 0,
+          choiceId: "collect",
+          idempotencyKey: randomUUID(),
+        }),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const snap = (await readSnapshot(database.db, owner))!;
+    expect(snap.activeExploration?.revision).toBe(1);
+    expect(snap.activeExploration?.pending.items).toEqual([{ itemId: "erva", quantity: 1 }]);
+    expect(snap.inventory.some((i) => i.itemId === "erva")).toBe(false);
+  });
+  it("saída concorrente concede o material uma vez e respeita cooldown", async () => {
+    await executeAction(
+      database.db,
+      owner,
+      { action: "exploration.start", areaId: "floresta", idempotencyKey: randomUUID() },
+      { random: () => 0.1 },
+    );
+    const id = (await readSnapshot(database.db, owner))!.activeExploration!.id;
+    await executeAction(database.db, owner, {
+      action: "exploration.choose",
+      encounterId: id,
+      revision: 0,
+      choiceId: "collect",
+      idempotencyKey: randomUUID(),
+    });
+    const input = {
+      action: "exploration.choose",
+      encounterId: id,
+      revision: 1,
+      choiceId: "retreat",
+      idempotencyKey: randomUUID(),
+    };
+    const results = await Promise.all(
+      [0, 1, 2, 3].map(() => executeAction(database.db, owner, input)),
+    );
+    expect(results[0]).toEqual(results[3]);
+    const snap = (await readSnapshot(database.db, owner))!;
+    expect(snap.activeExploration).toBeNull();
+    expect(snap.inventory.find((i) => i.itemId === "erva")?.quantity).toBe(1);
+    expect(snap.character.xp).toBe(0);
+    await expect(
+      executeAction(database.db, owner, {
+        action: "exploration.start",
+        areaId: "floresta",
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: "COOLDOWN" });
+  });
   it("combate manual concorrente resolve uma rodada sob conexões reais", async () => {
     const run = (action: object) =>
       executeAction(

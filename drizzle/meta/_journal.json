@@ -22,6 +22,20 @@
       "when": 1790872262091,
       "tag": "0002_powerful_spencer_smythe",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790948141256,
+      "tag": "0003_lonely_leech",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790950062757,
+      "tag": "0004_exploration_permissions",
+      "breakpoints": true
     }
   ]
 }

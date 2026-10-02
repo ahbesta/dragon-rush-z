@@ -27,6 +27,26 @@ const allocation = z
   })
   .strict();
 export const actionInput = z.discriminatedUnion("action", [
+  z
+    .object({ ...key, action: z.literal("exploration.start"), areaId: id, routeId: id.optional() })
+    .strict(),
+  z
+    .object({
+      ...key,
+      action: z.literal("exploration.choose"),
+      encounterId: z.uuid(),
+      revision: z.number().int().min(0),
+      choiceId: id,
+    })
+    .strict(),
+  z
+    .object({
+      ...key,
+      action: z.literal("exploration.abandon"),
+      encounterId: z.uuid(),
+      revision: z.number().int().min(0),
+    })
+    .strict(),
   z.object({ ...key, action: z.literal("attributes.allocate"), points: allocation }).strict(),
   z.object({ ...key, action: z.literal("attributes.respec"), settlementId: id }).strict(),
   z

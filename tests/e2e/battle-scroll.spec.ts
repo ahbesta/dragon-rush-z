@@ -1,3 +1,5 @@
+import { createExplorationSession } from "../../src/game/exploration/rules";
+import { seedCatalog } from "../../src/server/db/seed-data";
 import { openBattleCommands } from "./turn-menu";
 import { test, expect } from "./browser-test";
 import { type Locator, type Page } from "@playwright/test";
@@ -116,14 +118,33 @@ for (const section of ["Batalhar", "Explorar"]) {
       await action({ action: "combat.mode", mode: "manual" });
       await page.goto("/jogo");
       await go(page, section);
-      const startFight = () =>
-        section === "Explorar"
-          ? page.getByRole("button", { name: "Explorar e batalhar", exact: true })
-          : page
-              .locator(".enemy-row")
-              .filter({ hasText: "Lobo" })
-              .getByRole("button", { name: "Batalhar", exact: true });
-      await startFight().click();
+      const startFight = async () => {
+        if (section === "Explorar") {
+          await database.db
+            .delete(s.explorationSessions)
+            .where(eq(s.explorationSessions.characterId, initial.character.id));
+          const current = (await (await page.request.get("/api/game")).json()).snapshot;
+          const encounter = createExplorationSession(
+            seedCatalog.explorationEvents.find((e) => e.id === "floresta-danger")!,
+            randomUUID(),
+            current.stats,
+            () => 0.999,
+          );
+          await database.db.insert(s.explorationSessions).values({
+            id: encounter.id,
+            characterId: initial.character.id,
+            state: encounter,
+            startedAt: new Date(0),
+          });
+          await page.reload();
+          return page.getByRole("button", { name: /Passar sem ser percebido/ });
+        }
+        return page
+          .locator(".enemy-row")
+          .filter({ hasText: "Lobo" })
+          .getByRole("button", { name: "Batalhar", exact: true });
+      };
+      await (await startFight()).click();
       const arena = page.locator(".battle-arena");
       await expect(arena).toHaveClass(/manual-battle/);
       await expect(arena.locator(".arena-xp-earned")).toHaveCount(0);
@@ -175,7 +196,7 @@ for (const section of ["Batalhar", "Explorar"]) {
       await page.reload();
       await go(page, section);
       const previousId = await arena.getAttribute("data-battle-id");
-      await startFight().click();
+      await (await startFight()).click();
       await expect(arena).not.toHaveAttribute("data-battle-id", previousId!);
       await expect(arena).toHaveClass(/arena-completed/);
       await expect
@@ -199,8 +220,10 @@ for (const section of ["Batalhar", "Explorar"]) {
           .set({ nextBattleAt: null })
           .where(eq(s.characters.id, initial.character.id));
         await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-        await expect(startFight()).toBeEnabled();
-        await startFight().click();
+        await expect(
+          page.getByRole("button", { name: "Procurar um encontro", exact: true }),
+        ).toBeEnabled();
+        await (await startFight()).click();
         await expect(arena).not.toHaveAttribute("data-battle-id", firstId!);
         await expect(page.locator(".page-heading h1")).toHaveText("Explorar");
         await expect

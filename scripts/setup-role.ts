@@ -16,8 +16,9 @@ try {
         "A role já existe. Configure DATABASE_URL com as credenciais dela; nenhuma senha foi alterada.",
       );
     await client.query(
-      `GRANT SELECT ON chapters, quests, settlements, shop_offers, recipes TO ${role}`,
+      `GRANT SELECT ON chapters, quests, settlements, shop_offers, recipes, exploration_events, exploration_routes TO ${role}`,
     );
+    await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON exploration_sessions TO ${role}`);
     console.log("Permissões de leitura do catálogo atualizadas. Nenhuma credencial alterada.");
   } else {
     const password = randomBytes(32).toString("hex");
@@ -29,7 +30,7 @@ try {
     await client.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
     await client.query(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${role}`);
     await client.query(
-      `GRANT INSERT, UPDATE, DELETE ON auth_user, auth_session, auth_account, auth_verification, rate_limit, characters, inventory, character_techniques, character_transformations, activities, battles, active_battles, history, action_receipts TO ${role}`,
+      `GRANT INSERT, UPDATE, DELETE ON auth_user, auth_session, auth_account, auth_verification, rate_limit, characters, inventory, character_techniques, character_transformations, activities, battles, active_battles, history, action_receipts, exploration_sessions TO ${role}`,
     );
     await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${role}`);
     await client.query(

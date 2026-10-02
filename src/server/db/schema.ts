@@ -1,4 +1,9 @@
 import { sql } from "drizzle-orm";
+import type {
+  ExplorationEventDefinition,
+  ExplorationRoute,
+  ExplorationSession,
+} from "@/game/exploration/types";
 import {
   boolean,
   check,
@@ -381,6 +386,38 @@ export const recipes = pgTable(
       .default({}),
   },
   (t) => [check("recipe_values", sql`${t.outputQuantity} > 0 AND ${t.zeniCost} >= 0`)],
+);
+export const explorationEvents = pgTable("exploration_events", {
+  id: text("id").primaryKey(),
+  areaId: text("area_id")
+    .notNull()
+    .references(() => areas.id),
+  definition: jsonb("definition").$type<ExplorationEventDefinition>().notNull(),
+});
+export const explorationRoutes = pgTable("exploration_routes", {
+  id: text("id").primaryKey(),
+  areaId: text("area_id")
+    .notNull()
+    .references(() => areas.id),
+  definition: jsonb("definition").$type<ExplorationRoute>().notNull(),
+});
+export const explorationSessions = pgTable(
+  "exploration_sessions",
+  {
+    id: uuid("id").primaryKey(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    state: jsonb("state").$type<ExplorationSession>().notNull(),
+    startedAt: time("started_at").notNull().defaultNow(),
+    completedAt: time("completed_at"),
+  },
+  (t) => [
+    uniqueIndex("one_pending_exploration")
+      .on(t.characterId)
+      .where(sql`${t.completedAt} IS NULL`),
+    index("exploration_character_history").on(t.characterId, t.startedAt),
+  ],
 );
 export const activeBattles = pgTable("active_battles", {
   id: uuid("id").primaryKey(),

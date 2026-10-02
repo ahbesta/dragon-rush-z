@@ -38,6 +38,7 @@ import { Brand, DragonBall, RaceEmblem } from "./brand";
 import { formatNumber as n, ItemEffects, ItemIcon, Meter } from "./game-primitives";
 import { BattleDestinations } from "./battle-destinations";
 import { CombatModeSelector } from "./combat-controls";
+import { ExplorationPanel } from "./exploration-panel";
 import { BattleArena } from "./battle-arena";
 import { GameLobby } from "./game-lobby";
 import { transformationArtwork, destinationArtwork, techniqueArtwork } from "@/lib/game-art";
@@ -56,6 +57,7 @@ import { FighterAttributes } from "./fighter-attributes";
 import { QuestCompletionNotice } from "./quest-completion-notice";
 import { ActivityCompletionNotice } from "./activity-completion-notice";
 import { readyQuests } from "@/lib/quest-presentation";
+import { explorationBattlePresentation } from "@/lib/exploration-presentation";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -93,7 +95,9 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const arenaAnchor = useRef<HTMLDivElement>(null);
   const lastArrival = useRef<string | null>(null);
   const consumedAnimation = useCallback(() => setAnimatedBattleId(null), []);
-  const [section, setSection] = useState<Section>(initial.activeBattle ? "battle" : "character");
+  const [section, setSection] = useState<Section>(
+    initial.activeExploration ? "explore" : initial.activeBattle ? "battle" : "character",
+  );
   const [blockedDestination, setBlockedDestination] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
@@ -106,6 +110,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     const battle = initial.activeBattle ?? initial.latestBattle;
     const enemy = initial.catalog.enemies.find((e) => e.id === battle?.enemyId);
     return (
+      initial.activeExploration?.areaId ??
       battle?.areaId ??
       initial.catalog.encounters.find((e) => e.enemyId === (enemy?.heroicOf ?? battle?.enemyId))
         ?.areaId ??
@@ -144,7 +149,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     setTime({ server: new Date(next.serverTime).getTime(), client: Date.now() });
     setSnapshot(next);
     if (next.activeBattle) {
-      setSection((current) => (current === "explore" || current === "battle" ? current : "battle"));
+      setSection((current) =>
+        next.activeExploration
+          ? "explore"
+          : current === "explore" || current === "battle"
+            ? current
+            : "battle",
+      );
     } else {
       setBlockedDestination(null);
     }
@@ -236,6 +247,19 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
         }
         adopt(data.snapshot);
         if (
+          data.snapshot.latestExploration?.id !== snapshot.latestExploration?.id &&
+          data.snapshot.latestExploration &&
+          !data.snapshot.activeExploration
+        ) {
+          if (
+            !data.snapshot.latestExploration.battleId ||
+            data.snapshot.latestExploration.battleId !== data.snapshot.latestBattle?.id
+          ) {
+            setLootRevealId(data.snapshot.latestExploration.id);
+            setPendingPresentationId(data.snapshot.latestExploration.id);
+          }
+        }
+        if (
           section !== "explore" &&
           section !== "battle" &&
           ((data.snapshot.activeBattle?.id !== snapshot.activeBattle?.id &&
@@ -247,7 +271,10 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
         if (
           payload.action === "battle" ||
           payload.action === "boss" ||
-          payload.action === "explore"
+          payload.action === "explore" ||
+          (payload.action === "exploration.choose" &&
+            (data.snapshot.activeBattle ||
+              data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id))
         ) {
           setRetainedPageHeight(undefined);
           const battleArea =
@@ -274,6 +301,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   );
   const canShowCompletion =
     !snapshot.activeBattle &&
+    !snapshot.activeExploration &&
     !blockedDestination &&
     (!pendingPresentationId || (section !== "battle" && section !== "explore"));
   const currentChapter =
@@ -286,7 +314,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const battleWait = c.nextBattleAt
     ? Math.max(0, Math.ceil((new Date(c.nextBattleAt).getTime() - now) / 1000))
     : 0;
-  const blocked = busy || Boolean(activity) || Boolean(snapshot.activeBattle);
+  const blocked =
+    busy ||
+    Boolean(activity) ||
+    Boolean(snapshot.activeBattle) ||
+    Boolean(snapshot.activeExploration);
   const combatBlocked = blocked || battleWait > 0 || c.hp <= 0;
   const currentSection = sections.find((s) => s.id === section)!;
   const boss = catalog.enemies.find((e) => e.id === "piccolo-daimao");
@@ -480,12 +512,23 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               </button>
             </div>
           )}
-          {(section === "battle" || section === "explore") && (
+          {section === "explore" && (
+            <ExplorationPanel
+              snapshot={snapshot}
+              areaId={areaId}
+              onArea={setAreaId}
+              busy={busy}
+              now={now}
+              onAction={act}
+              revealId={lootRevealId}
+              onPresentationComplete={presentationComplete}
+            />
+          )}
+          {section === "battle" && (
             <BattleDestinations
               snapshot={snapshot}
               areaId={areaId}
               onArea={setAreaId}
-              mode={section}
               busy={blocked}
               wait={battleWait}
               onAction={act}
@@ -493,7 +536,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
             />
           )}
           {(snapshot.activeBattle ||
-            ((section === "battle" || section === "explore") && snapshot.latestBattle)) && (
+            ((section === "battle" ||
+              (section === "explore" &&
+                snapshot.latestExploration?.battleId === snapshot.latestBattle?.id &&
+                !snapshot.activeExploration)) &&
+              snapshot.latestBattle)) && (
             <div
               ref={arenaAnchor}
               className="battle-arena-anchor"
@@ -502,7 +549,9 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
             >
               <BattleArena
                 key={snapshot.activeBattle?.id ?? snapshot.latestBattle!.id}
-                snapshot={snapshot}
+                snapshot={
+                  section === "explore" ? explorationBattlePresentation(snapshot) : snapshot
+                }
                 busy={busy}
                 onAction={act}
                 autoplay={
@@ -512,6 +561,18 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 revealLoot={lootRevealId === snapshot.latestBattle?.id}
                 onPresentationComplete={presentationComplete}
               />
+            </div>
+          )}
+          {snapshot.activeExploration && section !== "explore" && !snapshot.activeBattle && (
+            <div className="activity-banner">
+              <Compass size={22} />
+              <div>
+                <strong>Um encontro espera sua decisão</strong>
+                <p>{snapshot.activeExploration.title} · Seus achados ainda estão em risco.</p>
+              </div>
+              <button className="button secondary small" onClick={() => go("explore")}>
+                Voltar à exploração
+              </button>
             </div>
           )}
           {activity && (
@@ -877,7 +938,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
             </div>
           )}
 
-          {(section === "explore" || section === "battle") && (
+          {section === "battle" && (
             <HeroicPanel snapshot={snapshot} busy={combatBlocked} onAction={act} />
           )}
 
@@ -943,7 +1004,11 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                           ) : (
                             <button
                               className={`button small ${item.type === "equipment" ? "primary" : "secondary"}`}
-                              disabled={blocked || reasons.length > 0}
+                              disabled={
+                                (item.type === "consumable"
+                                  ? busy || Boolean(activity) || Boolean(snapshot.activeBattle)
+                                  : blocked) || reasons.length > 0
+                              }
                               onClick={() => {
                                 if (
                                   item.effects.kiDamageBuff ||

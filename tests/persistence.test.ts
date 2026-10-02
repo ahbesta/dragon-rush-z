@@ -60,6 +60,221 @@ afterAll(async () => {
   if (engine) await engine.close();
 });
 describe("Persistência PostgreSQL e transações", () => {
+  it("encontro salva sorteios, esconde dados privados e resiste a recarga", async () => {
+    await command({ action: "exploration.start", areaId: "floresta" });
+    const first = (await readSnapshot(database.db, owner))!;
+    expect(first.activeExploration?.title).toBe("Ervas entre as raízes");
+    expect(first.catalog.explorationEvents).toBeUndefined();
+    expect(first.activeExploration).not.toHaveProperty("rolls");
+    expect((await readSnapshot(database.db, owner))!.activeExploration).toEqual(
+      first.activeExploration,
+    );
+    await expect(
+      command({ action: "exploration.start", areaId: "floresta" }),
+    ).rejects.toMatchObject({ code: "EXPLORATION_PENDING" });
+    await expect(
+      command({ action: "battle", areaId: "floresta", enemyId: "lobo" }),
+    ).rejects.toMatchObject({ code: "EXPLORATION_PENDING" });
+  });
+  it("coleta e conclusão concorrente concedem o achado uma única vez", async () => {
+    await command({ action: "exploration.start", areaId: "floresta" });
+    const first = (await readSnapshot(database.db, owner))!.activeExploration!;
+    await command({
+      action: "exploration.choose",
+      encounterId: first.id,
+      revision: 0,
+      choiceId: "collect",
+    });
+    const pending = (await readSnapshot(database.db, owner))!;
+    expect(pending.inventory.some((i) => i.itemId === "erva")).toBe(false);
+    const input = {
+      action: "exploration.choose",
+      encounterId: first.id,
+      revision: 1,
+      choiceId: "retreat",
+      idempotencyKey: randomUUID(),
+    };
+    const replies = await Promise.all(
+      [0, 1, 2].map(() => executeAction(database.db, owner, input)),
+    );
+    expect(replies[0]).toEqual(replies[1]);
+    const done = (await readSnapshot(database.db, owner))!;
+    expect(done.inventory.find((i) => i.itemId === "erva")?.quantity).toBe(1);
+    expect(done.character.xp).toBe(0);
+    expect(done.activeExploration).toBeNull();
+    await expect(command({ ...input, idempotencyKey: randomUUID() })).rejects.toMatchObject({
+      code: "STALE_ENCOUNTER",
+    });
+    await expect(
+      command({ action: "exploration.start", areaId: "floresta" }),
+    ).rejects.toMatchObject({ code: "COOLDOWN" });
+  });
+  it("abandono não toca inventário anterior e libera outras atividades", async () => {
+    await command({ action: "exploration.start", areaId: "floresta" });
+    const first = (await readSnapshot(database.db, owner))!.activeExploration!;
+    await command({
+      action: "exploration.choose",
+      encounterId: first.id,
+      revision: 0,
+      choiceId: "collect",
+    });
+    await command({ action: "exploration.abandon", encounterId: first.id, revision: 1 });
+    const done = (await readSnapshot(database.db, owner))!;
+    expect(done.inventory.find((i) => i.itemId === "pocao-hp")?.quantity).toBe(2);
+    expect(done.inventory.some((i) => i.itemId === "erva")).toBe(false);
+    expect(done.latestExploration?.status).toBe("abandoned");
+    await command({ action: "rest.start" });
+  });
+  it("não permite resolver um encontro de outro usuário ou usar revisão antiga", async () => {
+    await command({ action: "exploration.start", areaId: "floresta" });
+    const first = (await readSnapshot(database.db, owner))!.activeExploration!;
+    await expect(
+      command({
+        action: "exploration.choose",
+        encounterId: randomUUID(),
+        revision: 0,
+        choiceId: "collect",
+      }),
+    ).rejects.toMatchObject({ code: "STALE_ENCOUNTER" });
+    await command({
+      action: "exploration.choose",
+      encounterId: first.id,
+      revision: 0,
+      choiceId: "collect",
+    });
+    await expect(
+      command({
+        action: "exploration.choose",
+        encounterId: first.id,
+        revision: 0,
+        choiceId: "collect",
+      }),
+    ).rejects.toMatchObject({ code: "STALE_ENCOUNTER" });
+    await expect(
+      command({
+        action: "exploration.choose",
+        encounterId: first.id,
+        revision: 1,
+        choiceId: "help",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_CHOICE" });
+  });
+  it("bloqueia rota não descoberta e aceita poção durante encontro", async () => {
+    await expect(
+      command({ action: "exploration.start", areaId: "floresta", routeId: "floresta-route" }),
+    ).rejects.toMatchObject({ code: "ROUTE_LOCKED" });
+    await database.db.update(s.characters).set({ hp: 1 }).where(eq(s.characters.userId, owner));
+    await command({ action: "exploration.start", areaId: "floresta" });
+    await command({ action: "item.use", itemId: "pocao-hp" });
+    const snap = (await readSnapshot(database.db, owner))!;
+    expect(snap.character.hp).toBeGreaterThan(1);
+    expect(snap.inventory.find((i) => i.itemId === "pocao-hp")?.quantity).toBe(1);
+    expect(snap.activeExploration).not.toBeNull();
+  });
+  it("emboscada manual associa o combate ao encontro e conclui uma vez", async () => {
+    await database.db
+      .update(s.characters)
+      .set({
+        base: { strength: 200, defense: 100, speed: 100, endurance: 100, kiControl: 100 },
+        hp: 500,
+        ki: 200,
+        combatMode: "manual",
+      })
+      .where(eq(s.characters.userId, owner));
+    let index = 0;
+    await executeAction(
+      database.db,
+      owner,
+      { action: "exploration.start", areaId: "floresta", idempotencyKey: randomUUID() },
+      { random: () => (index++ === 0 ? 0.6 : 0.99) },
+    );
+    const event = (await readSnapshot(database.db, owner))!.activeExploration!;
+    expect(event.category).toBe("danger");
+    await command({
+      action: "exploration.choose",
+      encounterId: event.id,
+      revision: 0,
+      choiceId: "cross",
+    });
+    const fighting = (await readSnapshot(database.db, owner))!;
+    expect(fighting.activeExploration?.status).toBe("battle");
+    expect(fighting.activeExploration?.battleId).toBe(fighting.activeBattle?.id);
+    await expect(
+      command({ action: "exploration.abandon", encounterId: event.id, revision: 1 }),
+    ).rejects.toMatchObject({ code: "BATTLE_PENDING" });
+    await command({ action: "combat.mode", mode: "automatic" });
+    const done = (await readSnapshot(database.db, owner))!;
+    expect(done.activeBattle).toBeNull();
+    expect(done.activeExploration).toBeNull();
+    expect(done.latestExploration?.status).toBe("success");
+    expect(done.latestExploration?.battleId).toBe(done.latestBattle?.id);
+    expect(done.character.xp).toBe(done.latestBattle?.xp);
+  });
+  it("recompensas pendentes são guardadas quando vence emboscada automática", async () => {
+    await database.db
+      .update(s.characters)
+      .set({
+        base: { strength: 200, defense: 100, speed: 100, endurance: 100, kiControl: 100 },
+        hp: 500,
+        ki: 200,
+      })
+      .where(eq(s.characters.userId, owner));
+    await executeAction(
+      database.db,
+      owner,
+      { action: "exploration.start", areaId: "floresta", idempotencyKey: randomUUID() },
+      { random: () => 0.99 / 4 },
+    );
+    const event = (await readSnapshot(database.db, owner))!.activeExploration!;
+    await command({
+      action: "exploration.choose",
+      encounterId: event.id,
+      revision: 0,
+      choiceId: "collect",
+    });
+    const [row] = await database.db
+      .select()
+      .from(s.explorationSessions)
+      .where(eq(s.explorationSessions.id, event.id));
+    row.state.rolls["deeper:push"].chance = 99;
+    await database.db
+      .update(s.explorationSessions)
+      .set({ state: row.state })
+      .where(eq(s.explorationSessions.id, event.id));
+    await command({
+      action: "exploration.choose",
+      encounterId: event.id,
+      revision: 1,
+      choiceId: "push",
+    });
+    const done = (await readSnapshot(database.db, owner))!;
+    expect(done.latestExploration?.rewards.items).toEqual([{ itemId: "erva", quantity: 1 }]);
+    expect(done.inventory.find((i) => i.itemId === "erva")!.quantity).toBeGreaterThanOrEqual(1);
+    expect(done.activeExploration).toBeNull();
+  });
+  it("perigo fatal não concede recompensas nem mantém encontro preso", async () => {
+    await database.db.update(s.characters).set({ hp: 1 }).where(eq(s.characters.userId, owner));
+    let index = 0;
+    await executeAction(
+      database.db,
+      owner,
+      { action: "exploration.start", areaId: "floresta", idempotencyKey: randomUUID() },
+      { random: () => (index++ === 0 ? 0.75 : 0.99) },
+    );
+    const event = (await readSnapshot(database.db, owner))!.activeExploration!;
+    await command({
+      action: "exploration.choose",
+      encounterId: event.id,
+      revision: 0,
+      choiceId: "open",
+    });
+    const done = (await readSnapshot(database.db, owner))!;
+    expect(done.character.hp).toBe(0);
+    expect(done.activeExploration).toBeNull();
+    expect(done.latestExploration?.status).toBe("failed");
+    expect(done.latestExploration?.rewards.items).toEqual([]);
+    await command({ action: "rest.start" });
+  });
   it("migrations e seed são repetíveis sem duplicar catálogos", async () => {
     await migrate(database.db, { migrationsFolder: "./drizzle" });
     await database.db.transaction(seedDatabase);

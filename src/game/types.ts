@@ -17,6 +17,7 @@ export type Requirements = {
   flags?: string[];
 };
 export type ItemEffects = {
+  exploration?: { attribute?: AttributeKey; bonus: number; areaIds?: string[] };
   attributes?: Partial<Attributes>;
   restoreHp?: number;
   restoreKi?: number;
@@ -135,6 +136,8 @@ export type DropDefinition = {
 };
 export type ActionPolicy = { id: string; durationSeconds: number; xpReward: number };
 export type Catalog = {
+  explorationEvents?: import("./exploration/types").ExplorationEventDefinition[];
+  explorationRoutes?: import("./exploration/types").ExplorationRoute[];
   races: RaceDefinition[];
   techniques: TechniqueDefinition[];
   items: ItemDefinition[];
@@ -403,6 +406,9 @@ export type BattleResult = {
 };
 export type HistoryEntry = { id: string; kind: string; description: string; createdAt: string };
 export type GameSnapshot = {
+  activeExploration?: import("./exploration/types").ActiveExploration | null;
+  latestExploration?: import("./exploration/types").ExplorationResult | null;
+  explorationCooldownAt?: string | null;
   serverTime: string;
   character: Omit<CharacterState, "userId" | "createdAt" | "updatedAt" | "nextBattleAt"> & {
     nextBattleAt: string | null;

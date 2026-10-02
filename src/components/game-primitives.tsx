@@ -64,7 +64,26 @@ export function ItemIcon({
   showcase?: boolean;
 }) {
   const art = item
-    ? (itemArtwork[item.id] ?? (item.id.startsWith("trofeu-") ? itemArtwork.trofeu : undefined))
+    ? (itemArtwork[item.id] ??
+      (item.id.startsWith("mapa-")
+        ? {
+            src: "/images/exploration/map.webp",
+            alt: "Mapa de exploração da Terra",
+            width: 512,
+            height: 512,
+          }
+        : item.id.startsWith("reliquia-")
+          ? {
+              src: "/images/exploration/insignia.webp",
+              alt: "Insígnia de exploração",
+              width: 512,
+              height: 512,
+            }
+          : item.id === "kit-exploracao"
+            ? itemArtwork.componente
+            : item.id.startsWith("trofeu-")
+              ? itemArtwork.trofeu
+              : undefined))
     : undefined;
   const Icon = !item
     ? Package

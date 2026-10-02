@@ -2,6 +2,7 @@ import type { Db, Transaction } from "./client";
 import * as s from "./schema";
 import { seedCatalog as c } from "./seed-data";
 import { eq } from "drizzle-orm";
+import { seedExploration } from "./seed-exploration";
 
 export async function seedDatabase(db: Db | Transaction) {
   // Catálogos são dados administrativos. Reexecutar o seed nunca altera personagens.
@@ -52,6 +53,7 @@ export async function seedDatabase(db: Db | Transaction) {
       .insert(s.encounters)
       .values(row)
       .onConflictDoUpdate({ target: [s.encounters.areaId, s.encounters.enemyId], set: row });
+  await seedExploration(db);
   // Remove obsolete drops only for our managed enemies (not custom administrative content).
   for (const enemy of c.enemies) await db.delete(s.drops).where(eq(s.drops.enemyId, enemy.id));
   for (const row of c.drops)

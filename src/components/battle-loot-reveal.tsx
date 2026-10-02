@@ -18,7 +18,7 @@ export function BattleLootReveal({
   reveal,
   onComplete,
 }: {
-  battle: BattleResult;
+  battle: Pick<BattleResult, "id" | "drops">;
   items: ItemDefinition[];
   enabled: boolean;
   reveal: boolean;

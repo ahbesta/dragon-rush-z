@@ -1,6 +1,16 @@
 import "server-only";
 import { createHash, randomInt, randomUUID } from "node:crypto";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql, desc } from "drizzle-orm";
+import {
+  createExplorationSession,
+  selectExplorationEvent,
+  resolveExploration,
+  finishExploration,
+  presentExploration,
+  explorationResult,
+  ExplorationRuleError,
+} from "@/game/exploration/rules";
+import type { ExplorationSession } from "@/game/exploration/types";
 import { deriveBuildStats } from "@/game/attributes";
 import { xpRequired } from "@/game/progression";
 import { unmetRequirements } from "@/game/requirements";
@@ -181,9 +191,6 @@ export async function executeAction(
   options: { random?: () => number } = {},
 ): Promise<Receipt> {
   const input = actionInput.parse(rawInput);
-  const limit = await consumeLimit(db, `game:${userId}`, 120, 60);
-  if (!limit.allowed)
-    throw new GameError("RATE_LIMIT", "Muitas ações. Aguarde alguns segundos.", 429);
   const hash = hashCommand(input);
   const random = options.random ?? secureRandom;
   return db.transaction(async (tx) => {
@@ -193,10 +200,15 @@ export async function executeAction(
       .where(eq(s.characters.userId, userId))
       .for("update");
     if (!character) return missing("Crie seu personagem primeiro.");
+    const limit = await consumeLimit(tx, `game:${userId}`, 120, 60);
+    if (!limit.allowed)
+      throw new GameError("RATE_LIMIT", "Muitas ações. Aguarde alguns segundos.", 429);
     const existingReceipt = await findReceipt(tx, userId, input.idempotencyKey, hash);
     if (existingReceipt) return existingReceipt;
     const now = await clock(tx);
-    const catalog = await readCatalog(tx);
+    const catalog = await readCatalog(tx, {
+      includeExplorationEvents: input.action === "exploration.start" || input.action === "explore",
+    });
     const race =
       catalog.races.find((r) => r.id === character.raceId) ?? missing("Raça indisponível.");
     const [pending] = await tx
@@ -226,10 +238,63 @@ export async function executeAction(
         pending.finishesAt.toISOString(),
       );
     const result: Receipt = { message: "" };
+    let [exploration] = await tx
+      .select()
+      .from(s.explorationSessions)
+      .where(
+        and(
+          eq(s.explorationSessions.characterId, character.id),
+          isNull(s.explorationSessions.completedAt),
+        ),
+      );
+    if (
+      exploration &&
+      ![
+        "exploration.choose",
+        "exploration.abandon",
+        "item.use",
+        "combat.mode",
+        "battle.turn",
+        "battle.action",
+      ].includes(input.action)
+    )
+      throw new GameError(
+        "EXPLORATION_PENDING",
+        "Resolva ou abandone o encontro de exploração antes de iniciar outra ação.",
+        409,
+      );
     if (!active) upgradeCharacter(character, race);
     const policy = (id: string) =>
       catalog.policies.find((p) => p.id === id) ?? missing("Regras de atividade indisponíveis.");
     const stats = statsFor(character, catalog);
+    const explorationContext = async () => ({
+      character,
+      powerLevel: statsFor(character, catalog).powerLevel,
+      maxHp: statsFor(character, catalog).maxHp,
+      items: catalog.items,
+      inventory: await tx
+        .select()
+        .from(s.inventory)
+        .where(eq(s.inventory.characterId, character.id)),
+    });
+    const persistExploration = async (state: ExplorationSession) => {
+      if (!exploration)
+        throw new GameError("ENCOUNTER_NOT_PENDING", "Encontro não encontrado.", 409);
+      exploration.state = state;
+      const finished = state.status !== "active" && state.status !== "battle";
+      await tx
+        .update(s.explorationSessions)
+        .set({ state, completedAt: finished ? now : null })
+        .where(eq(s.explorationSessions.id, state.id));
+      if (finished) {
+        grantExperience(character, state.granted.xp, race);
+        character.zeni += state.granted.zeni;
+        character.flags = [...new Set([...character.flags, ...state.granted.flags])];
+        for (const item of state.granted.items)
+          await addItem(tx, character.id, item.itemId, item.quantity);
+        await appendHistory(tx, character.id, "exploration", state.message);
+      }
+    };
     const completeBattle = async (
       battle: BattleResult,
       previousUsed: { itemId: string; quantity: number }[] = [],
@@ -237,7 +302,6 @@ export async function executeAction(
       await consumeBattleItems(tx, character.id, battle.usedItems ?? [], previousUsed);
       character.hp = battle.playerHp;
       character.ki = battle.playerKi;
-      character.nextBattleAt = new Date(now.getTime() + policy("battle").durationSeconds * 1000);
       if (battle.outcome === "victory") {
         grantExperience(character, battle.xp, race);
         character.zeni += battle.zeni;
@@ -269,6 +333,17 @@ export async function executeAction(
         createdAt: now,
       });
       await tx.delete(s.activeBattles).where(eq(s.activeBattles.characterId, character.id));
+      if (exploration?.state.status === "battle" && exploration.state.battleId === battle.id) {
+        await persistExploration(
+          finishExploration(
+            exploration.state,
+            battle.outcome === "victory" ? "success" : "failed",
+            battle.outcome === "victory"
+              ? "Você venceu a emboscada e guardou os achados do encontro."
+              : "A emboscada terminou sem vitória. Os achados pendentes foram perdidos.",
+          ),
+        );
+      }
       result.battle = battle;
       const enemyName = catalog.enemies.find((e) => e.id === battle.enemyId)?.name ?? "Inimigo";
       result.message =
@@ -279,7 +354,196 @@ export async function executeAction(
             : "Empate. Nenhuma recompensa concedida.";
       await appendHistory(tx, character.id, "battle", result.message);
     };
+    const engage = async (enemy: Catalog["enemies"][number], areaId?: string) => {
+      const learned = await tx
+        .select()
+        .from(s.learnedTechniques)
+        .where(eq(s.learnedTechniques.characterId, character.id));
+      const available = character.selectedTechniques.filter((id) =>
+        learned.some((t) => t.techniqueId === id),
+      );
+      const playerTechniques = available
+        .map((id) => catalog.techniques.find((t) => t.id === id))
+        .filter((t): t is Catalog["techniques"][number] => Boolean(t));
+      const combatInventory = await tx
+        .select()
+        .from(s.inventory)
+        .where(eq(s.inventory.characterId, character.id));
+      const combat = createStrategicCombat({
+        id: randomUUID(),
+        areaId,
+        player: {
+          name: character.name,
+          hp: character.hp,
+          ki: character.ki,
+          stats,
+          techniques: playerTechniques,
+        },
+        enemy,
+        techniques: catalog.techniques,
+        drops: catalog.drops,
+        random,
+        playerLevel: character.level,
+        belt: character.belt ?? [],
+        inventory: combatInventory,
+        items: catalog.items,
+        autoItems: character.autoItems ?? {
+          enabled: false,
+          hpThreshold: 30,
+          kiThreshold: 20,
+          maxUses: 1,
+        },
+      });
+      if (exploration?.state.status === "battle") {
+        exploration.state.battleId = combat.id;
+        await persistExploration(exploration.state);
+      }
+      if (character.combatMode === "manual" || requiresManualCombat(enemy, character.flags)) {
+        await tx.insert(s.activeBattles).values({
+          id: combat.id,
+          characterId: character.id,
+          state: combat,
+          createdAt: now,
+          updatedAt: now,
+        });
+        result.message = `Combate contra ${enemy.name} iniciado. Escolha sua técnica.`;
+        await appendHistory(tx, character.id, "battle.start", result.message);
+      } else await completeBattle(finishCombat(combat, random));
+    };
     switch (input.action) {
+      case "explore":
+      case "exploration.start": {
+        if (character.hp <= 0)
+          throw new GameError("NO_HP", "Descanse ou use uma poção antes de explorar.", 409);
+        if (character.nextBattleAt && now < character.nextBattleAt)
+          throw new GameError(
+            "COOLDOWN",
+            "Recupere o fôlego antes de explorar.",
+            409,
+            character.nextBattleAt.toISOString(),
+          );
+        const area =
+          catalog.areas.find((a) => a.id === input.areaId) ?? missing("Área não encontrada.");
+        if (character.level < area.minLevel)
+          throw new GameError("AREA_LOCKED", `Esta área exige nível ${area.minLevel}.`, 403);
+        requireAllowed(character, catalog, { ...area.requirements, minLevel: area.minLevel });
+        const [previous] = await tx
+          .select()
+          .from(s.explorationSessions)
+          .where(eq(s.explorationSessions.characterId, character.id))
+          .orderBy(desc(s.explorationSessions.startedAt))
+          .limit(1);
+        const deadline = previous
+          ? new Date(previous.startedAt.getTime() + policy("exploration").durationSeconds * 1000)
+          : null;
+        if (deadline && now < deadline)
+          throw new GameError(
+            "COOLDOWN",
+            "Aguarde antes de procurar um novo encontro.",
+            409,
+            deadline.toISOString(),
+          );
+        const routeId = input.action === "exploration.start" ? input.routeId : undefined;
+        const route = routeId
+          ? catalog.explorationRoutes?.find((r) => r.id === routeId && r.areaId === area.id)
+          : undefined;
+        if (routeId && (!route || !character.flags.includes(route.discoveryFlag)))
+          throw new GameError(
+            "ROUTE_LOCKED",
+            "Este caminho ainda não foi descoberto nesta região.",
+            403,
+          );
+        try {
+          const event = selectExplorationEvent(
+            catalog.explorationEvents ?? [],
+            area.id,
+            await explorationContext(),
+            random,
+            route,
+          );
+          const state = createExplorationSession(
+            event,
+            randomUUID(),
+            stats,
+            random,
+            route?.id ?? null,
+          );
+          [exploration] = await tx
+            .insert(s.explorationSessions)
+            .values({ id: state.id, characterId: character.id, state, startedAt: now })
+            .returning();
+          result.message = `Encontro: ${event.title}. Escolha como agir.`;
+        } catch (error) {
+          if (error instanceof ExplorationRuleError)
+            throw new GameError(error.code, error.message, 409);
+          throw error;
+        }
+        break;
+      }
+      case "exploration.choose":
+      case "exploration.abandon": {
+        if (
+          !exploration ||
+          exploration.id !== input.encounterId ||
+          exploration.state.status !== "active" ||
+          exploration.state.revision !== input.revision
+        )
+          throw new GameError(
+            "STALE_ENCOUNTER",
+            "O encontro mudou ou já foi resolvido. Atualize a tela.",
+            409,
+          );
+        if (input.action === "exploration.abandon") {
+          await persistExploration(
+            finishExploration(
+              exploration.state,
+              "abandoned",
+              "Você abandonou o encontro. Achados pendentes foram perdidos; custos já gastos não são devolvidos.",
+            ),
+          );
+        } else {
+          try {
+            const resolved = resolveExploration(
+              exploration.state,
+              input.revision,
+              input.choiceId,
+              await explorationContext(),
+            );
+            character.ki -= resolved.cost?.ki ?? 0;
+            character.zeni -= resolved.cost?.zeni ?? 0;
+            for (const item of resolved.cost?.items ?? [])
+              await removeItem(tx, character.id, item.itemId, item.quantity);
+            character.hp = Math.max(0, character.hp - resolved.damage);
+            const state =
+              character.hp === 0
+                ? finishExploration(
+                    resolved.session,
+                    "failed",
+                    "Você foi derrotado pelo perigo. Os achados foram perdidos. Recupere-se antes de continuar.",
+                  )
+                : resolved.session;
+            await persistExploration(state);
+            if (state.status === "battle") {
+              const enemy =
+                catalog.enemies.find((e) => e.id === state.enemyId) ??
+                missing("Inimigo indisponível.");
+              if (
+                enemy.boss ||
+                !catalog.encounters.some((e) => e.areaId === state.areaId && e.enemyId === enemy.id)
+              )
+                throw new GameError("INVALID_ENCOUNTER", "Emboscada inválida.", 409);
+              requireAllowed(character, catalog, enemy.requirements);
+              await engage(enemy, state.areaId);
+            }
+          } catch (error) {
+            if (error instanceof ExplorationRuleError)
+              throw new GameError(error.code, error.message, 409);
+            throw error;
+          }
+        }
+        result.message = exploration.state.message || "Sua escolha foi registrada.";
+        break;
+      }
       case "combat.mode": {
         character.combatMode = input.mode;
         if (
@@ -404,7 +668,6 @@ export async function executeAction(
         await appendHistory(tx, character.id, pending.kind, result.message);
         break;
       }
-      case "explore":
       case "battle":
       case "boss": {
         if (character.hp <= 0)
@@ -426,36 +689,9 @@ export async function executeAction(
             throw new GameError("AREA_LOCKED", `Esta área exige nível ${area.minLevel}.`, 403);
           requireAllowed(character, catalog, area.requirements ?? {});
           const encounters = catalog.encounters.filter((e) => e.areaId === area.id);
-          if (input.action === "battle") {
-            if (!encounters.some((e) => e.enemyId === input.enemyId))
-              throw new GameError("INVALID_ENCOUNTER", "Inimigo não pertence à área.");
-            enemyId = input.enemyId;
-          } else {
-            const eligible = encounters.filter((enc) => {
-              const enemy = catalog.enemies.find((e) => e.id === enc.enemyId);
-              return (
-                enemy &&
-                !enemy.boss &&
-                unmetRequirements(enemy.requirements, {
-                  level: character.level,
-                  powerLevel: stats.powerLevel,
-                  raceId: character.raceId,
-                  flags: character.flags,
-                }).length === 0
-              );
-            });
-            const total = eligible.reduce((sum, e) => sum + e.weight, 0);
-            if (!total) return missing("Esta área não possui encontros.");
-            let roll = random() * total;
-            enemyId = eligible[eligible.length - 1].enemyId;
-            for (const encounter of eligible) {
-              roll -= encounter.weight;
-              if (roll < 0) {
-                enemyId = encounter.enemyId;
-                break;
-              }
-            }
-          }
+          if (!encounters.some((e) => e.enemyId === input.enemyId))
+            throw new GameError("INVALID_ENCOUNTER", "Inimigo não pertence à área.");
+          enemyId = input.enemyId;
         }
         const enemy =
           catalog.enemies.find((e) => e.id === enemyId) ?? missing("Inimigo não encontrado.");
@@ -476,56 +712,7 @@ export async function executeAction(
             throw new GameError("AREA_LOCKED", `Esta área exige nível ${bossArea.minLevel}.`, 403);
           requireAllowed(character, catalog, bossArea.requirements ?? {});
         }
-        const learned = await tx
-          .select()
-          .from(s.learnedTechniques)
-          .where(eq(s.learnedTechniques.characterId, character.id));
-        const available = character.selectedTechniques.filter((id) =>
-          learned.some((t) => t.techniqueId === id),
-        );
-        const playerTechniques = available
-          .map((id) => catalog.techniques.find((t) => t.id === id))
-          .filter((t): t is Catalog["techniques"][number] => Boolean(t));
-        const combatInventory = await tx
-          .select()
-          .from(s.inventory)
-          .where(eq(s.inventory.characterId, character.id));
-        const combat = createStrategicCombat({
-          id: randomUUID(),
-          areaId: input.action === "boss" ? bossArea?.id : input.areaId,
-          player: {
-            name: character.name,
-            hp: character.hp,
-            ki: character.ki,
-            stats,
-            techniques: playerTechniques,
-          },
-          enemy,
-          techniques: catalog.techniques,
-          drops: catalog.drops,
-          random,
-          playerLevel: character.level,
-          belt: character.belt ?? [],
-          inventory: combatInventory,
-          items: catalog.items,
-          autoItems: character.autoItems ?? {
-            enabled: false,
-            hpThreshold: 30,
-            kiThreshold: 20,
-            maxUses: 1,
-          },
-        });
-        if (character.combatMode === "manual" || requiresManualCombat(enemy, character.flags)) {
-          await tx.insert(s.activeBattles).values({
-            id: combat.id,
-            characterId: character.id,
-            state: combat,
-            createdAt: now,
-            updatedAt: now,
-          });
-          result.message = `Combate contra ${enemy.name} iniciado. Escolha sua técnica.`;
-          await appendHistory(tx, character.id, "battle.start", result.message);
-        } else await completeBattle(finishCombat(combat, random));
+        await engage(enemy, input.action === "boss" ? bossArea?.id : input.areaId);
         break;
       }
       case "item.use":
@@ -656,6 +843,10 @@ export async function executeAction(
       .where(eq(s.activeBattles.characterId, character.id));
     if (!remainingActive) upgradeCharacter(character, race);
     const finalStats = statsFor(character, catalog);
+    if (result.battle)
+      character.nextBattleAt = new Date(
+        (await clock(tx)).getTime() + policy("battle").durationSeconds * 1000,
+      );
     await tx
       .update(s.characters)
       .set({
@@ -705,6 +896,12 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
         history: GameSnapshot["history"];
         battles: { result: BattleResult }[];
         active: { state: CombatState }[];
+        explorations: {
+          state: ExplorationSession;
+          startedAt: string;
+          completedAt: string | null;
+        }[];
+        explorationHistory: { state: ExplorationSession }[];
         now: string;
       };
       const result = await tx.execute<PersonalData>(sql`SELECT
@@ -715,9 +912,21 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
       ${rowsAsJson(s.history, { where: eq(s.history.characterId, character.id), orderBy: sql`${s.history.createdAt} DESC`, limit: 10 })} AS history,
       ${rowsAsJson(s.battles, { where: eq(s.battles.characterId, character.id), orderBy: sql`${s.battles.createdAt} DESC`, limit: 1 })} AS battles,
       ${rowsAsJson(s.activeBattles, { where: eq(s.activeBattles.characterId, character.id) })} AS active,
+      ${rowsAsJson(s.explorationSessions, { where: eq(s.explorationSessions.characterId, character.id), orderBy: sql`${s.explorationSessions.startedAt} DESC`, limit: 1 })} AS explorations,
+      ${rowsAsJson(s.explorationSessions, { where: and(eq(s.explorationSessions.characterId, character.id), sql`${s.explorationSessions.completedAt} IS NOT NULL`), orderBy: sql`${s.explorationSessions.startedAt} DESC`, limit: 1 })} AS "explorationHistory",
       clock_timestamp() AS now`);
-      const { inventory, learned, unlocked, activities, history, battles, active, now } =
-        result.rows[0];
+      const {
+        inventory,
+        learned,
+        unlocked,
+        activities,
+        history,
+        battles,
+        active,
+        explorations,
+        explorationHistory,
+        now,
+      } = result.rows[0];
       if (!active.length) upgradeCharacter(character, race);
       const displayedStats = statsFor(character, catalog);
       character.hp = Math.min(character.hp, displayedStats.maxHp);
@@ -740,7 +949,27 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
         stats: displayedStats,
         xpRequired: xpRequired(character.level),
         race,
-        catalog,
+        catalog: { ...catalog, explorationEvents: undefined },
+        activeExploration:
+          explorations[0] && !explorations[0].completedAt
+            ? presentExploration(explorations[0].state, {
+                character,
+                powerLevel: displayedStats.powerLevel,
+                maxHp: displayedStats.maxHp,
+                inventory,
+                items: catalog.items,
+              })
+            : null,
+        latestExploration: explorationHistory[0]
+          ? explorationResult(explorationHistory[0].state)
+          : null,
+        explorationCooldownAt: explorations[0]
+          ? new Date(
+              new Date(explorations[0].startedAt).getTime() +
+                (catalog.policies.find((p) => p.id === "exploration")?.durationSeconds ?? 12) *
+                  1000,
+            ).toISOString()
+          : null,
         inventory: inventory.map((i) => ({ itemId: i.itemId, quantity: i.quantity })),
         learnedTechniques: learned.map((t) => t.techniqueId),
         unlockedTransformations: unlocked.map((t) => t.transformationId),

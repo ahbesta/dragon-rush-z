@@ -1,0 +1,44 @@
+{
+  "mode": "built-in image_gen",
+  "assets": [
+    [
+      "encounter",
+      "Landscape illustration for Dragon Rush Z fan browser RPG exploration event. Original Dragon Ball 1986 anime cel painting aesthetic, mature adventurous tone, bold clean ink outlines, saturated but natural colors. 1536x1024 landscape. In a forest at Mount Paozu, an open small aged treasure chest holding folded paper and one Capsule Corp white numbered capsule, medicinal herbs, rocky hidden cave mouth and distant dinosaur silhouette. No characters in foreground, no UI, no text or lettering. Clean correct chest geometry, contents fully inside chest, no gold coins scattered. Strong clear composition centered on chest and capsule in middle 65%, no cropped objects, suitable in 4:3 and wide card."
+    ],
+    [
+      "map",
+      "Single item inventory artwork transparent background: neatly folded open adventure paper map from original Dragon Ball 1986 Earth, stylized anime cel shaded bold black outlines, orange wax seal with four red stars, winding trail, green mountains, ocean island on paper. Entire map centered with ample transparent margins, square 1024x1024, only one item, no hands or background, no text or letters. Mature RPG item quality, crisp legible silhouette."
+    ],
+    [
+      "insignia",
+      "Single item inventory artwork transparent background: exclusive Dragon Ball fan RPG travel insignia, round polished brass and dark blue enamel badge, four small red stars at top, engraved stylized Mount Paozu silhouette and orange Capsule Corp inspired compact travel compass underneath, rugged leather cord forming neat loop. Mature original Dragon Ball anime cel shading, bold clean outlines, no text or letters, no duplicated parts, entire item centered with ample transparent margins square1024. Only one badge, full cord visible."
+    ]
+  ],
+  "npcSubjects": [
+    [
+      "bulma",
+      "Bulma from original Dragon Ball, turquoise hair tied with red ribbon, pink short-sleeve adventurer outfit, holding a Dragon Radar in one hand, confident curious expression"
+    ],
+    [
+      "suno",
+      "Suno from original Dragon Ball, young red-haired girl with a green knitted winter hat and brown fur-lined winter coat, holding folded winter supplies, calm attentive expression"
+    ],
+    [
+      "tartaruga",
+      "Mestre Kame's large sea turtle Umigame from original Dragon Ball, olive green skin with wrinkles and brown shell, standing on four natural flippers, friendly but dignified expression, NO humanoid arms or hands"
+    ],
+    [
+      "upa",
+      "Upa from original Dragon Ball, small young boy of Karin Sanctuary, dark brown hair in tall tuft with a single red feather, earth-toned tribal outfit, carrying a small provision basket with both hands, serious attentive expression"
+    ],
+    [
+      "karin",
+      "Karin from original Dragon Ball, small white plump cat sage, closed narrow eyes, long whiskers, holding wooden staff with one paw, standing naturally, knowing calm expression"
+    ],
+    [
+      "yajirobe",
+      "Yajirobe from original Dragon Ball, stocky young samurai with long unruly black hair, orange patterned yukata, sword sheathed at waist, arms folded, grumpy hungry expression"
+    ]
+  ],
+  "npcTemplate": "Single character NPC portrait for Dragon Rush Z fan browser RPG. {subject}. Faithful original Dragon Ball 1986 anime cel shaded ink outlines, expressive but not childish or chibi, correct anatomy. Entire character centered fully visible including feet, generous transparent margins all around, square 1024 artwork on transparent background. No other characters, no scenery, no text, no UI. Keep all limbs and props correct and inside canvas. This is an exploration event portrait, not a fighter or battle sprite."
+}
