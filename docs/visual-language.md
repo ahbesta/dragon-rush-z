@@ -1,6 +1,6 @@
 # Interface de RPG
 
-Os títulos principais das seções, perfil e criação usam a mesma Saiyan Sans do mapa, com amarelo/laranja e contorno escuro. `public/fonts/saiyan-sans-pt.ttf` preserva os desenhos e larguras da fonte original de Ben Palmer, adicionando acentos latinos; a atribuição original está em `public/fonts/saiyan-sans-readme.txt`. Textos corridos, números e controles mantêm suas fontes de leitura.
+Os títulos principais das seções, perfil e criação usam a Saiyan Sans original do mapa, com amarelo/laranja e contorno escuro. Como a fonte não contém acentos, os títulos das seções são apresentados sem acentuação; seus nomes acessíveis preservam a grafia original. A fonte e a atribuição de Ben Palmer estão em `public/fonts/saiyan-sans.ttf` e `public/fonts/saiyan-sans-readme.txt`. Textos corridos, números e controles mantêm suas fontes de leitura.
 
 `src/app/rpg-interface.css` aplica a linguagem compartilhada de console depois dos estilos de cada seção. A moldura envolve a janela de comandos, ficha ou lista; atributos, escolhas e itens não recebem cards independentes. Azul escuro, laranja de seleção e dourado identificam as janelas. Cursores respondem tanto ao mouse quanto ao foco de teclado.
 

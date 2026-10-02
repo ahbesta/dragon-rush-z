@@ -480,7 +480,9 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
             <div className="page-heading">
               <div>
                 <span className="eyebrow">SUPERE SEUS LIMITES</span>
-                <h1>{currentSection.label}</h1>
+                <h1 aria-label={currentSection.label}>
+                  {currentSection.label.normalize("NFD").replace(/\p{M}/gu, "")}
+                </h1>
                 <p>
                   {section === "training"
                     ? "O poder vem da dedicação. Concentre-se e evolua."

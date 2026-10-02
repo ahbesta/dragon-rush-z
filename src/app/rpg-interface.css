@@ -67,7 +67,7 @@
 .game-main .page-heading h1,
 .profile-heading h1,
 .creation-content > h1 {
-  font: 400 clamp(32px, 4vw, 52px)/1.2 var(--font-game-title);
+  font: 400 clamp(32px, 4vw, 52px)/1.1 var(--font-game-title);
   text-transform: uppercase;
   color: #ffe35a;
   letter-spacing: 2px;
