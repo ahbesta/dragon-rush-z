@@ -126,6 +126,7 @@ for (const section of ["Batalhar", "Explorar"]) {
       await startFight().click();
       const arena = page.locator(".battle-arena");
       await expect(arena).toHaveClass(/manual-battle/);
+      await expect(arena.locator(".arena-xp-earned")).toHaveCount(0);
       await expect(page.locator(".page-heading h1")).toHaveText(section);
       await expect
         .poll(() =>
@@ -161,6 +162,10 @@ for (const section of ["Batalhar", "Explorar"]) {
       const dismissDrops = arena.getByRole("button", { name: "Fechar drops", exact: true });
       if (await dismissDrops.isVisible()) await dismissDrops.click();
       await expect(arena.locator(".arena-outcome")).toBeVisible();
+      const result = (await (await page.request.get("/api/game")).json()).snapshot.latestBattle;
+      await expect(arena.locator(".arena-xp-earned strong")).toHaveText(
+        `+${result.xp.toLocaleString("pt-BR")} XP`,
+      );
 
       await database.db
         .update(s.characters)

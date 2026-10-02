@@ -143,6 +143,9 @@ for (const width of [390, 1440])
       await expect(firstReveal).toHaveAttribute("data-item-id", expectedItems[0].id);
       releaseArtwork();
       const before = await state();
+      await expect(arena.locator(".arena-xp-earned strong")).toHaveText(
+        `+${before.latestBattle!.xp.toLocaleString("pt-BR")} XP`,
+      );
       for (const item of expectedItems) {
         const reveal = arena.locator(".arena-loot-reveal");
         await expect(reveal).toHaveAttribute("data-rarity", item.rarity);
@@ -186,6 +189,9 @@ for (const width of [390, 1440])
           .click();
       }
       await expect(arena.locator(".arena-loot-reveal")).toHaveCount(0);
+      await expect(arena.locator(".arena-outcome-xp")).toHaveText(
+        `+${before.latestBattle!.xp.toLocaleString("pt-BR")} XP`,
+      );
       const rewards = arena.locator(".battle-reward-item");
       for (const [index, item] of expectedItems.entries()) {
         await expect(rewards.nth(index)).toContainText(item.name);

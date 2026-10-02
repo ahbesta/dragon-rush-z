@@ -531,6 +531,50 @@
     2px 2px #973b3b,
     4px 4px #0b233b;
 }
+.arena-outcome-xp {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 4px 18px;
+  border: 1px solid #ffc454aa;
+  border-radius: 8px 2px 8px 2px;
+  background: linear-gradient(110deg, #0c253aee, #174342ee);
+  color: #c5ffa4;
+  font:
+    italic 800 clamp(22px, 3cqw, 34px)/1.2 "Barlow Condensed",
+    sans-serif;
+  text-shadow: 1px 2px #07182a;
+  box-shadow: 0 0 20px #ffcf4922;
+}
+.arena-xp-earned {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 7px;
+  padding: 5px 11px;
+  border: 1px solid #f6c46877;
+  border-left: 3px solid #ffc454;
+  border-radius: 7px 2px 7px 2px;
+  background: linear-gradient(110deg, #164448, #12332e);
+  color: #d0ffa6;
+}
+.arena-xp-earned > svg {
+  color: #ffdc86;
+}
+.arena-xp-earned small {
+  display: block;
+  font:
+    700 7px/1.2 "Inter",
+    sans-serif;
+  letter-spacing: 0.04em;
+  color: #b3dfbd;
+}
+.arena-xp-earned strong {
+  display: block;
+  font:
+    italic 800 24px/1.1 "Barlow Condensed",
+    sans-serif;
+  text-shadow: 1px 2px #061b24;
+}
 .arena-action-caption {
   display: flex;
   align-items: center;

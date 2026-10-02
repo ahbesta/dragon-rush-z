@@ -20,7 +20,7 @@ import {
   type SpriteSheet,
 } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
-import { Meter } from "./game-primitives";
+import { formatNumber, Meter } from "./game-primitives";
 import { BattleCommandMenu } from "./battle-command-menu";
 import { BattleLog, CombatEventLog } from "./battle-log";
 import { BattleLootReveal } from "./battle-loot-reveal";
@@ -161,10 +161,12 @@ export function BattleArena({
       .filter(Boolean)
       .join(" ");
   const outcome = !active ? snapshot.latestBattle?.outcome : undefined;
+  const earnedXp =
+    !active && outcome === "victory" && !playback.playing ? snapshot.latestBattle!.xp : undefined;
   const idleCaption = active
     ? "Observe a intenção do inimigo e escolha sua ação."
     : outcome === "victory"
-      ? "Vitória! Seu guerreiro superou mais um desafio."
+      ? `${enemyName} derrotado!`
       : outcome === "defeat"
         ? "Derrota. Recupere suas forças e volte à arena."
         : "Combate encerrado.";
@@ -366,6 +368,9 @@ export function BattleArena({
             <small>
               {outcome === "victory" ? "SUPERE SEUS LIMITES" : "A SUA JORNADA CONTINUA"}
             </small>
+            {earnedXp !== undefined && (
+              <strong className="arena-outcome-xp">+{formatNumber(earnedXp)} XP</strong>
+            )}
           </div>
         )}
         {!active &&
@@ -391,6 +396,15 @@ export function BattleArena({
       <div className="arena-action-caption" aria-live="polite">
         <Swords size={18} />
         <span>{playback.playing ? (frame?.caption ?? "A batalha começou!") : idleCaption}</span>
+        {earnedXp !== undefined && (
+          <div className="arena-xp-earned" aria-label="Experiência recebida">
+            <Zap size={18} aria-hidden="true" />
+            <span>
+              <small>EXPERIÊNCIA GANHA</small>
+              <strong>+{formatNumber(earnedXp)} XP</strong>
+            </span>
+          </div>
+        )}
         {frame?.round ? <small>RODADA {frame.round}</small> : null}
       </div>
       <div className="arena-playback-controls">
