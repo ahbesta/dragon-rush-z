@@ -64,11 +64,21 @@
   padding-bottom: 5px;
   margin-bottom: 15px;
 }
-.game-main .page-heading h1 {
-  text-shadow: 2px 3px #09162a;
-  color: #fff0ce;
-  font-style: italic;
-  letter-spacing: 0.02em;
+.game-main .page-heading h1,
+.profile-heading h1,
+.creation-content > h1 {
+  font: 400 clamp(32px, 4vw, 52px)/1.2 var(--font-game-title);
+  text-transform: uppercase;
+  color: #ffe35a;
+  letter-spacing: 2px;
+  -webkit-text-stroke: 1px #6b300f;
+  text-shadow:
+    2px 3px #b4470a,
+    4px 5px #040b16;
+}
+.creation-content > h1 em {
+  color: #ff9d28;
+  font-style: normal;
 }
 .game-main .page-heading > div > p {
   display: none;
@@ -935,6 +945,12 @@
   font-size: 11px;
 }
 @media (max-width: 760px) {
+  .game-main .page-heading h1,
+  .profile-heading h1,
+  .creation-content > h1 {
+    font-size: clamp(24px, 7vw, 32px);
+    letter-spacing: 1px;
+  }
   .game-main .expedition-lock-banner {
     padding: 16px;
     gap: 12px;

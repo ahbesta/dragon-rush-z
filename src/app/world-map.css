@@ -1,8 +1,11 @@
 @font-face {
   font-family: "Saiyan Sans";
-  src: url("/fonts/saiyan-sans.ttf") format("truetype");
+  src: url("/fonts/saiyan-sans-pt.ttf") format("truetype");
   font-display: swap;
   font-weight: 400;
+}
+:root {
+  --font-game-title: "Saiyan Sans", "Barlow Condensed", sans-serif;
 }
 .world-map {
   margin-bottom: 16px;
@@ -16,10 +19,7 @@
 }
 .world-map-heading h1 {
   margin: 10px 0 0;
-  font:
-    400 clamp(32px, 4vw, 52px)/1.1 "Saiyan Sans",
-    "Barlow Condensed",
-    sans-serif;
+  font: 400 clamp(32px, 4vw, 52px)/1.1 var(--font-game-title);
   color: #ffe35a;
   letter-spacing: 2px;
   -webkit-text-stroke: 1px #6b300f;
