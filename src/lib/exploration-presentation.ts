@@ -6,6 +6,7 @@ export function explorationBattlePresentation(snapshot: GameSnapshot): GameSnaps
     encounter = snapshot.latestExploration;
   if (
     !battle ||
+    encounter?.depth !== undefined ||
     snapshot.activeBattle ||
     !encounter?.battleId ||
     encounter.battleId !== battle.id ||

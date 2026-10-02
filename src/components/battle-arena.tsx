@@ -83,6 +83,7 @@ export function BattleArena({
   onAutoplayConsumed,
   revealLoot,
   onPresentationComplete,
+  onContinue,
 }: {
   snapshot: GameSnapshot;
   busy: boolean;
@@ -91,6 +92,7 @@ export function BattleArena({
   onAutoplayConsumed: () => void;
   revealLoot: boolean;
   onPresentationComplete?: (battleId: string) => void;
+  onContinue?: () => void;
 }) {
   const [lootReplay, setLootReplay] = useState(0);
   const [highlighted, setHighlighted] = useState<CombatActor | null>(null);
@@ -418,6 +420,7 @@ export function BattleArena({
               enabled={!playback.playing}
               reveal={revealLoot || lootReplay > 0}
               onComplete={lootComplete}
+              pending={Boolean(snapshot.activeExploration)}
             />
           )}
       </div>
@@ -436,7 +439,11 @@ export function BattleArena({
           <div className="arena-xp-earned" aria-label="Experiência recebida">
             <Zap size={18} aria-hidden="true" />
             <span>
-              <small>EXPERIÊNCIA GANHA</small>
+              <small>
+                {snapshot.activeExploration
+                  ? "XP PENDENTE · VOLTE EM SEGURANÇA"
+                  : "EXPERIÊNCIA GANHA"}
+              </small>
               <strong>+{formatNumber(earnedXp)} XP</strong>
             </span>
           </div>
@@ -486,7 +493,7 @@ export function BattleArena({
       </div>
       {active && (
         <div className="arena-journal-panel">
-          <details className="arena-battle-journal" open>
+          <details className="arena-battle-journal">
             <summary>Histórico da batalha · {events.length} eventos</summary>
             <CombatEventLog
               events={events}
@@ -509,6 +516,7 @@ export function BattleArena({
           snapshot={snapshot}
           fighters={fighters}
           onHighlight={setHighlighted}
+          onContinue={onContinue}
         />
       )}
     </section>

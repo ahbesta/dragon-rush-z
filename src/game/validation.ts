@@ -28,6 +28,30 @@ const allocation = z
   .strict();
 export const actionInput = z.discriminatedUnion("action", [
   z
+    .object({
+      ...key,
+      action: z.literal("exploration.advance"),
+      encounterId: z.uuid(),
+      revision: z.number().int().min(0),
+    })
+    .strict(),
+  z
+    .object({
+      ...key,
+      action: z.literal("exploration.return"),
+      encounterId: z.uuid(),
+      revision: z.number().int().min(0),
+    })
+    .strict(),
+  z
+    .object({
+      ...key,
+      action: z.literal("exploration.fight"),
+      encounterId: z.uuid(),
+      revision: z.number().int().min(0),
+    })
+    .strict(),
+  z
     .object({ ...key, action: z.literal("exploration.start"), areaId: id, routeId: id.optional() })
     .strict(),
   z

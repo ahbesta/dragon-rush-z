@@ -17,12 +17,14 @@ export function BattleLootReveal({
   enabled,
   reveal,
   onComplete,
+  pending = false,
 }: {
   battle: Pick<BattleResult, "id" | "drops">;
   items: ItemDefinition[];
   enabled: boolean;
   reveal: boolean;
   onComplete?: () => void;
+  pending?: boolean;
 }) {
   const [index, setIndex] = useState<number | null>(0);
   const [readyFor, setReadyFor] = useState<string | null>(null);
@@ -122,7 +124,8 @@ export function BattleLootReveal({
         <strong className="arena-loot-rarity">{rarityNames[rarity]}</strong>
         <h3>{item?.name ?? "Item recebido"}</h3>
         <span className="arena-loot-saved">
-          <Check size={12} /> Adicionado à mochila
+          <Check size={12} />{" "}
+          {pending ? "Achado pendente · volte em segurança" : "Adicionado à mochila"}
         </span>
         <button className="arena-loot-next" onClick={advance} disabled={!artReady}>
           {index + 1 < battle.drops.length ? "Próximo item" : "Continuar"}

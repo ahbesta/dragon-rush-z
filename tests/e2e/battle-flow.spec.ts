@@ -196,6 +196,8 @@ for (const width of [390, 1440])
       for (const [index, item] of expectedItems.entries()) {
         await expect(rewards.nth(index)).toContainText(item.name);
       }
+      await expect(arena.locator(".battle-result .combat-log")).toHaveCount(0);
+      await arena.getByRole("button", { name: /Ver batalha completa/ }).click();
       await expect(arena.locator(".battle-result .combat-log")).toBeVisible();
       expect(await page.locator(".battle-result").count()).toBe(1);
       await arena.getByRole("button", { name: "Ver drops", exact: true }).click();

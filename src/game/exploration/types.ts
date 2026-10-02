@@ -56,7 +56,21 @@ export type ExplorationRoute = {
   discoveryFlag: string;
   favoredCategories: ExplorationCategory[];
 };
-export type ExplorationStatus = "active" | "battle" | "success" | "failed" | "abandoned";
+export type ExplorationStatus =
+  "active" | "checkpoint" | "ambush" | "battle" | "success" | "failed" | "abandoned";
+export type ExplorationFeedback = {
+  id: string;
+  kind: "gain" | "loss" | "ambush" | "neutral" | "return";
+  title: string;
+  message: string;
+  gained: ExplorationReward;
+  lost: ExplorationReward;
+  hpLost: number;
+  kiSpent: number;
+  zeniSpent: number;
+  zeniLost: number;
+  spentItems: { itemId: string; quantity: number }[];
+};
 export type ExplorationSession = {
   id: string;
   areaId: string;
@@ -73,6 +87,8 @@ export type ExplorationSession = {
   log: string[];
   battleId?: string;
   enemyId?: string;
+  depth?: number;
+  feedback?: ExplorationFeedback;
   rolls: Record<string, { chance: number; success: ExplorationReward; failure: ExplorationReward }>;
 };
 export type ExplorationChoiceView = Pick<
@@ -81,6 +97,14 @@ export type ExplorationChoiceView = Pick<
 > & {
   chance: number;
   reasons: string[];
+  benefit: ExplorationRewardDefinition;
+  failure: {
+    damage: number;
+    fatal: boolean;
+    losesFinds: boolean;
+    enemyName?: string;
+    zeniPenalty: number;
+  };
 };
 export type ActiveExploration = {
   id: string;
@@ -97,11 +121,29 @@ export type ActiveExploration = {
   revision: number;
   stageTitle: string;
   stageText: string;
-  status: "active" | "battle";
+  status: "active" | "checkpoint" | "ambush" | "battle";
   pending: ExplorationReward;
   message: string;
   log: string[];
   battleId?: string;
+  depth: number;
+  maxDepth: number;
+  advanceCost: number;
+  threat: {
+    dangerChance: number;
+    targetMultiplier: number;
+    enemyHpMultiplier: number;
+    enemyAttributeMultiplier: number;
+  };
+  nextThreat: {
+    dangerChance: number;
+    targetMultiplier: number;
+    enemyHpMultiplier: number;
+    enemyAttributeMultiplier: number;
+  };
+  feedback?: ExplorationFeedback;
+  enemy?: { id: string; name: string; level: number; maxHp: number };
+  defeatZeni: number;
   choices: ExplorationChoiceView[];
 };
 export type ExplorationResult = {
@@ -116,4 +158,6 @@ export type ExplorationResult = {
   lost: ExplorationReward;
   log: string[];
   battleId?: string;
+  feedback?: ExplorationFeedback;
+  depth?: number;
 };

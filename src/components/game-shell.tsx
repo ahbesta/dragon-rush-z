@@ -80,6 +80,7 @@ type ApiResponse = {
 
 export function GameShell({ initial }: { initial: GameSnapshot }) {
   const [snapshot, setSnapshot] = useState(initial);
+  const [dismissedBattleId, setDismissedBattleId] = useState<string | null>(null);
   const [animatedBattleId, setAnimatedBattleId] = useState<string | null>(null);
   const [lootRevealId, setLootRevealId] = useState<string | null>(null);
   const [pendingQuestIds, setPendingQuestIds] = useState<string[]>([]);
@@ -88,6 +89,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const [pendingPresentationId, setPendingPresentationId] = useState<string | null>(null);
   const presentationComplete = useCallback((id: string) => {
     setPendingPresentationId((pending) => (pending === id ? null : pending));
+    setLootRevealId((current) => (current === id ? null : current));
   }, []);
   const [dismissedActivityId, setDismissedActivityId] = useState<string | null>(null);
   const [arenaArrivalId, setArenaArrivalId] = useState<string | null>(null);
@@ -246,18 +248,27 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           setPendingPresentationId(data.snapshot.latestBattle.id);
         }
         adopt(data.snapshot);
+        const feedback = data.snapshot.activeExploration?.feedback;
+        if (
+          feedback &&
+          feedback.id !== snapshot.activeExploration?.feedback?.id &&
+          !data.snapshot.activeBattle &&
+          !(
+            data.snapshot.latestBattle &&
+            data.snapshot.latestBattle.id !== snapshot.latestBattle?.id
+          )
+        ) {
+          setLootRevealId(feedback.id);
+          if (feedback.gained.items.length || feedback.kind === "loss")
+            setPendingPresentationId(feedback.id);
+        }
         if (
           data.snapshot.latestExploration?.id !== snapshot.latestExploration?.id &&
           data.snapshot.latestExploration &&
           !data.snapshot.activeExploration
         ) {
-          if (
-            !data.snapshot.latestExploration.battleId ||
-            data.snapshot.latestExploration.battleId !== data.snapshot.latestBattle?.id
-          ) {
-            setLootRevealId(data.snapshot.latestExploration.id);
-            setPendingPresentationId(data.snapshot.latestExploration.id);
-          }
+          setLootRevealId(data.snapshot.latestExploration.id);
+          setPendingPresentationId(data.snapshot.latestExploration.id);
         }
         if (
           section !== "explore" &&
@@ -272,7 +283,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           payload.action === "battle" ||
           payload.action === "boss" ||
           payload.action === "explore" ||
-          (payload.action === "exploration.choose" &&
+          (payload.action === "exploration.fight" &&
             (data.snapshot.activeBattle ||
               data.snapshot.latestBattle?.id !== snapshot.latestBattle?.id))
         ) {
@@ -522,6 +533,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               onAction={act}
               revealId={lootRevealId}
               onPresentationComplete={presentationComplete}
+              combatPresentation={Boolean(
+                snapshot.activeBattle ||
+                (snapshot.activeExploration?.status === "checkpoint" &&
+                  snapshot.activeExploration.battleId &&
+                  snapshot.activeExploration.battleId === snapshot.latestBattle?.id &&
+                  dismissedBattleId !== snapshot.latestBattle?.id),
+              )}
             />
           )}
           {section === "battle" && (
@@ -536,10 +554,10 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
             />
           )}
           {(snapshot.activeBattle ||
-            ((section === "battle" ||
-              (section === "explore" &&
-                snapshot.latestExploration?.battleId === snapshot.latestBattle?.id &&
-                !snapshot.activeExploration)) &&
+            (dismissedBattleId !== snapshot.latestBattle?.id &&
+              (section === "battle" ||
+                (section === "explore" &&
+                  snapshot.activeExploration?.battleId === snapshot.latestBattle?.id)) &&
               snapshot.latestBattle)) && (
             <div
               ref={arenaAnchor}
@@ -560,6 +578,26 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 onAutoplayConsumed={consumedAnimation}
                 revealLoot={lootRevealId === snapshot.latestBattle?.id}
                 onPresentationComplete={presentationComplete}
+                onContinue={() => {
+                  setDismissedBattleId(snapshot.latestBattle!.id);
+                  presentationComplete(snapshot.latestBattle!.id);
+                  setRetainedPageHeight(undefined);
+                  requestAnimationFrame(() => {
+                    const target = document.querySelector<HTMLElement>(
+                      section === "explore" ? ".expedition-checkpoint" : ".battle-destinations",
+                    );
+                    if (target) {
+                      target.tabIndex = -1;
+                      target.focus({ preventScroll: true });
+                      target.scrollIntoView({
+                        block: "start",
+                        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                          ? "instant"
+                          : "smooth",
+                      });
+                    }
+                  });
+                }}
               />
             </div>
           )}
@@ -982,7 +1020,10 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                           <span className="item-quantity">×{owned.quantity}</span>
                         </div>
                         <h3>{item.name}</h3>
-                        <p>{item.description}</p>
+                        <details className="rpg-more-info">
+                          <summary>Detalhes</summary>
+                          <p>{item.description}</p>
+                        </details>
                         <ItemEffects item={item} />
                         {!equipped && <EquipmentComparison snapshot={snapshot} item={item} />}
                         <div className="item-card-bottom">
@@ -1117,7 +1158,10 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                         </span>
                       </div>
                       <h3>{technique.name}</h3>
-                      <p>{technique.description}</p>
+                      <details className="rpg-more-info">
+                        <summary>Detalhes do golpe</summary>
+                        <p>{technique.description}</p>
+                      </details>
                       <div className="technique-stats">
                         <span>
                           <Zap size={13} /> {technique.kiCost} Ki

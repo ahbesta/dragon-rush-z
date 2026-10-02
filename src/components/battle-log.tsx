@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronUp, Swords, Trophy, X, Zap } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ChevronRight, Swords, Trophy, X, Zap } from "lucide-react";
 import type { BattleEvent, BattleResult, GameSnapshot } from "@/game/types";
 import { formatNumber, ItemIcon } from "./game-primitives";
 import { rarityNames } from "./battle-loot-reveal";
@@ -16,31 +16,32 @@ export function BattleLog({
   snapshot,
   fighters,
   onHighlight,
-}: { battle: BattleResult; snapshot: GameSnapshot } & HighlightProps) {
+  onContinue,
+}: { battle: BattleResult; snapshot: GameSnapshot; onContinue?: () => void } & HighlightProps) {
   const [expanded, setExpanded] = useState(false);
   const enemy = snapshot.catalog.enemies.find((e) => e.id === battle.enemyId);
   const names = { player: snapshot.character.name, enemy: enemy?.name ?? "Inimigo" };
   const victory = battle.outcome === "victory";
-  const events = expanded ? battle.events : battle.events.slice(-7);
   return (
     <section className={`panel battle-result ${battle.outcome}`}>
       <div className="panel-heading">
         <div className="heading-icon">{victory ? <Trophy size={20} /> : <Swords size={20} />}</div>
         <div>
           <span className="eyebrow">RESULTADO DO COMBATE</span>
-          <h3>
-            {victory
-              ? "Vitória!"
-              : battle.outcome === "defeat"
-                ? "Seu treino continua."
-                : "Forças equilibradas."}
-          </h3>
+          <h3>{victory ? "Vitória!" : battle.outcome === "defeat" ? "Derrota!" : "Empate!"}</h3>
         </div>
         <span className={`badge ${victory ? "green" : ""}`}>{enemy?.name}</span>
       </div>
       <div className="battle-versus">
-        <span>{names.player}</span>
-        <small>VS</small>
+        <span>
+          {fighters && onHighlight && (
+            <CombatAvatar actor="player" fighters={fighters} onHighlight={onHighlight} />
+          )}
+          {names.player}
+        </span>
+        <small>
+          <Swords size={20} />
+        </small>
         <span className="battle-adversary">
           <EnemyPortrait enemyId={battle.enemyId} artId={enemy?.artId} sizes="100px" />
           {names.enemy}
@@ -49,9 +50,15 @@ export function BattleLog({
       {victory && (
         <div className="battle-rewards">
           <span>
-            <Zap size={15} /> +{formatNumber(battle.xp)} XP
+            <Zap size={20} />
+            <strong>+{formatNumber(battle.xp)}</strong>
+            <small>XP{snapshot.activeExploration ? " PENDENTE" : " RECEBIDO"}</small>
           </span>
-          <span className="zeni-color">◈ +{formatNumber(battle.zeni)} Zeni</span>
+          <span className="zeni-color">
+            <b>◈</b>
+            <strong>+{formatNumber(battle.zeni)}</strong>
+            <small>ZENI{snapshot.activeExploration ? " PENDENTE" : " RECEBIDO"}</small>
+          </span>
           {sortItemsByRarity(battle.drops, snapshot.catalog.items).map((drop) => (
             <span
               className={`battle-reward-item rarity-${snapshot.catalog.items.find((i) => i.id === drop.itemId)?.rarity ?? "common"}`}
@@ -77,11 +84,27 @@ export function BattleLog({
           Derrota: −{battle.zeniLost} Zeni. Seus níveis, XP e equipamentos foram preservados.
         </p>
       )}
-      <CombatEventLog events={events} names={names} fighters={fighters} onHighlight={onHighlight} />
+      {snapshot.activeExploration && victory && (
+        <p className="battle-bank-note">Volte em segurança para guardar as recompensas.</p>
+      )}
+      {onContinue && (
+        <button className="button primary battle-result-continue" onClick={onContinue}>
+          Continuar <ChevronRight size={18} />
+        </button>
+      )}
       <button className="log-expand" onClick={() => setExpanded((v) => !v)}>
         {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}{" "}
         {expanded ? "Recolher log" : `Ver batalha completa (${battle.events.length} eventos)`}
       </button>
+      {expanded && (
+        <CombatEventLog
+          events={battle.events}
+          names={names}
+          fighters={fighters}
+          onHighlight={onHighlight}
+          rewardsPending={Boolean(snapshot.activeExploration)}
+        />
+      )}
     </section>
   );
 }
@@ -92,10 +115,12 @@ export function CombatEventLog({
   follow = false,
   fighters,
   onHighlight,
+  rewardsPending = false,
 }: {
   events: BattleEvent[];
   names: { player: string; enemy: string };
   follow?: boolean;
+  rewardsPending?: boolean;
 } & HighlightProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const atEnd = useRef(true);
@@ -164,7 +189,10 @@ export function CombatEventLog({
               </span>
             ) : event.type === "reward" ? (
               <span>
-                <Check size={12} /> Recompensas adicionadas ao personagem.
+                <Check size={12} />{" "}
+                {rewardsPending
+                  ? "Recompensas pendentes da expedição."
+                  : "Recompensas adicionadas ao personagem."}
               </span>
             ) : (
               <span>Combate encerrado.</span>

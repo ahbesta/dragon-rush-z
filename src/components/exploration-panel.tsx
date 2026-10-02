@@ -6,21 +6,27 @@ import {
   BookOpen,
   TriangleAlert,
   LockKeyhole,
-  ArrowRight,
   Package,
   Heart,
   Map,
+  Zap,
+  TrendingUp,
+  ShieldCheck,
+  ArrowRight,
 } from "lucide-react";
 import type { GameSnapshot } from "@/game/types";
 import type { ActionPayload } from "@/game/validation";
 import type { ExplorationCategory, ExplorationReward } from "@/game/exploration/types";
 import { unmetRequirements } from "@/game/requirements";
+import { ExplorationDecision, ExplorationFeedbackCard } from "./exploration-feedback";
 import { RegionSelector } from "./region-selector";
-import { Scene, ItemIcon, attributeLabels } from "./game-primitives";
+import { Scene, ItemIcon } from "./game-primitives";
 import { BattleLootReveal, rarityNames } from "./battle-loot-reveal";
 import { sortItemsByRarity } from "@/lib/item-presentation";
 import { ArtworkImage } from "./artwork-image";
 import { explorationWeightsForRoute } from "@/game/exploration/rules";
+import { enemyArtwork } from "@/lib/game-art";
+import { DragonBall } from "./brand";
 
 const categoryLabels: Record<ExplorationCategory, string> = {
   gather: "COLETA",
@@ -81,6 +87,7 @@ export function ExplorationPanel({
   onAction,
   revealId,
   onPresentationComplete,
+  combatPresentation = false,
 }: {
   snapshot: GameSnapshot;
   areaId: string;
@@ -90,10 +97,13 @@ export function ExplorationPanel({
   onAction: (action: ActionPayload) => void;
   revealId: string | null;
   onPresentationComplete: (id: string) => void;
+  combatPresentation?: boolean;
 }) {
   const [routeId, setRouteId] = useState("");
+  const [dismissedResult, setDismissedResult] = useState<string | null>(null);
   const encounter = snapshot.activeExploration,
     result = snapshot.latestExploration;
+  const showResult = !encounter && result && result.id !== dismissedResult;
   const area =
     snapshot.catalog.areas.find((a) => a.id === (encounter?.areaId ?? areaId)) ??
     snapshot.catalog.areas[0];
@@ -115,6 +125,7 @@ export function ExplorationPanel({
   );
   const wait = Math.max(cooldown, battleCooldown);
   const consumePotion = (itemId: string) => onAction({ action: "item.use", itemId });
+  const ambusherArt = encounter?.enemy ? enemyArtwork[encounter.enemy.id] : undefined;
   const potions = snapshot.inventory.filter(
     (o) =>
       o.quantity > 0 &&
@@ -125,16 +136,94 @@ export function ExplorationPanel({
           (i.effects.restoreHp || i.effects.restoreKi),
       ),
   );
+  if (combatPresentation && encounter)
+    return (
+      <div className="exploration-battle-status">
+        <Compass size={18} />
+        <strong>
+          {area.name} · Trecho {encounter.depth}/{encounter.maxDepth}
+        </strong>
+        <span>
+          <Package size={15} />
+          {encounter.pending.items.reduce((sum, item) => sum + item.quantity, 0)} achados · EM RISCO
+        </span>
+      </div>
+    );
   return (
     <section className="exploration-panel" aria-label="Exploração da Terra">
-      {!encounter && (
+      {!encounter && !showResult && (
         <RegionSelector snapshot={snapshot} areaId={areaId} onArea={onArea} exploration />
+      )}
+      {encounter && (
+        <div className="expedition-progress" aria-label="Progresso da expedição">
+          <div>
+            <Compass size={24} />
+            <span>
+              EXPEDIÇÃO EM CURSO
+              <strong>
+                Trecho {encounter.depth} de {encounter.maxDepth}
+              </strong>
+            </span>
+            <span className={encounter.depth > 2 ? "threat-critical" : "threat-cautious"}>
+              {
+                ["", "TRILHA INICIAL", "ATENÇÃO", "PERIGOSO", "MUITO PERIGOSO", "RISCO EXTREMO"][
+                  encounter.depth
+                ]
+              }
+            </span>
+          </div>
+          <ol>
+            {Array.from({ length: encounter.maxDepth }, (_, index) => (
+              <li
+                key={index}
+                className={
+                  index + 1 === encounter.depth
+                    ? "current"
+                    : index + 1 < encounter.depth
+                      ? "passed"
+                      : ""
+                }
+                aria-current={index + 1 === encounter.depth ? "step" : undefined}
+              >
+                <DragonBall stars={index + 1} />
+                <small>
+                  {index === 0
+                    ? "PARTIDA"
+                    : index === encounter.maxDepth - 1
+                      ? "LIMITE"
+                      : `TRECHO ${index + 1}`}
+                </small>
+              </li>
+            ))}
+          </ol>
+          <div className="expedition-warning-strip">
+            <span>
+              <TriangleAlert size={14} />
+              PERIGO ↑
+            </span>
+            <span>
+              <Zap size={14} />
+              INIMIGOS ↑
+            </span>
+            <span>
+              <TrendingUp size={14} />
+              RECOMPENSA ↑
+            </span>
+          </div>
+          <small className="expedition-bank-warning">Achados em risco até voltar.</small>
+        </div>
       )}
       {encounter ? (
         <article className={`exploration-occurrence occurrence-${encounter.category}`}>
           <div className="exploration-illustration">
             <Scene kind={area.id} />
-            {encounter.npcId ? (
+            {encounter.status === "ambush" && ambusherArt ? (
+              <ArtworkImage
+                art={ambusherArt}
+                sizes="(max-width:760px) 240px,360px"
+                className="exploration-npc-art"
+              />
+            ) : encounter.npcId ? (
               <ArtworkImage
                 art={{
                   src: `/images/exploration/${encounter.npcId}.webp`,
@@ -194,40 +283,193 @@ export function ExplorationPanel({
               )}
             </div>
             <span className="exploration-stamp">
-              {categoryLabels[encounter.category]} · {rarityNames[encounter.rarity]}
+              {encounter.status === "ambush"
+                ? "EMBOSCADA · PASSAGEM BLOQUEADA"
+                : `${categoryLabels[encounter.category]} · ${rarityNames[encounter.rarity]}`}
             </span>
           </div>
           <div className="exploration-story">
             <span className="eyebrow orange">
               {area.name} ·{" "}
-              {encounter.stageId === "deeper" ? "ETAPA 2 DE 2" : "ENCONTRO EM ANDAMENTO"}
+              {encounter.stageId === "deeper"
+                ? "ETAPA 2 DE 2 · MESMO TRECHO"
+                : "ENCONTRO EM ANDAMENTO"}
             </span>
-            <h2>{encounter.title}</h2>
+            <h2>{encounter.status === "ambush" ? "Emboscada na trilha!" : encounter.title}</h2>
             <p>{encounter.description}</p>
-            {encounter.message && (
-              <p className="exploration-consequence" role="status">
-                {encounter.message}
-              </p>
+            {encounter.feedback && encounter.status !== "ambush" && (
+              <ExplorationFeedbackCard
+                key={`feedback-${encounter.feedback.id}`}
+                feedback={encounter.feedback}
+                snapshot={snapshot}
+                reveal={revealId === encounter.feedback.id}
+                onComplete={() => onPresentationComplete(encounter.feedback!.id)}
+              />
             )}
-            {encounter.stageId !== "arrival" && (
-              <>
-                <h3>{encounter.stageTitle}</h3>
-                <p>{encounter.stageText}</p>
-              </>
+            {encounter.status === "active" && encounter.stageId !== "arrival" && (
+              <span className="expedition-stage-caption">
+                Ainda neste trecho · vasculhar ou voltar
+              </span>
             )}
-            {encounter.status === "battle" ? (
+            {encounter.status === "ambush" ? (
+              <div className="expedition-ambush" role="alert">
+                <span className="eyebrow">PASSAGEM BLOQUEADA · EMBOSCADA</span>
+                <h3>{encounter.enemy?.name ?? "Um inimigo"} encontrou você!</h3>
+                {!!encounter.feedback?.kiSpent && (
+                  <p className="ambush-ki-spent">
+                    Passagem falhou · −{encounter.feedback.kiSpent} Ki
+                  </p>
+                )}
+                <p>Você foi detectado. Vença para liberar o caminho.</p>
+                <div className="ambush-stats">
+                  <strong>Nível {encounter.enemy?.level}</strong>
+                  <strong>{encounter.enemy?.maxHp} HP</strong>
+                  <strong>
+                    Trecho {encounter.depth} · inimigo{" "}
+                    {encounter.depth === 1 ? "da região" : "fortalecido"}
+                  </strong>
+                </div>
+                <div className="ambush-consequences">
+                  <span>
+                    <ShieldCheck size={18} />
+                    <strong>VENCER</strong> Achados preservados
+                  </span>
+                  <span>
+                    <TriangleAlert size={18} />
+                    <strong>PERDER</strong> Todos os achados perdidos
+                  </span>
+                </div>
+                <details className="rpg-more-info">
+                  <summary>Penalidades da emboscada</summary>
+                  <p>
+                    Derrota: −{encounter.defeatZeni} Zeni da carteira. Empate também perde os
+                    achados. Provisões usadas são gastas. Vitória mantém tudo pendente até o
+                    retorno.
+                  </p>
+                </details>
+                <button
+                  className="button danger"
+                  disabled={busy || snapshot.character.hp <= 0}
+                  onClick={() =>
+                    onAction({
+                      action: "exploration.fight",
+                      encounterId: encounter.id,
+                      revision: encounter.revision,
+                    })
+                  }
+                >
+                  Enfrentar emboscada
+                </button>
+              </div>
+            ) : encounter.status === "battle" ? (
               <p className="exploration-risk">
-                <TriangleAlert size={18} /> A emboscada continua na arena abaixo. Vencer guarda os
-                achados; uma derrota os perde.
+                <TriangleAlert size={18} /> A emboscada está na arena abaixo. Os achados de todos os
+                trechos continuam em risco até o retorno.
               </p>
+            ) : encounter.status === "checkpoint" ? (
+              <div className="expedition-checkpoint">
+                <span className="eyebrow">TRECHO CONCLUÍDO · DECIDA SEU PRÓXIMO PASSO</span>
+                <h3>
+                  {encounter.depth < encounter.maxDepth ? "Continuar ou voltar?" : "Fim da trilha!"}
+                </h3>
+                <span className="expedition-bank-warning">
+                  Voltar guarda tudo. Continuar arrisca tudo.
+                </span>
+                {encounter.depth < encounter.maxDepth && (
+                  <details className="expedition-escalation">
+                    <summary>
+                      <TriangleAlert size={16} /> PRÓXIMO TRECHO · MAIS PERIGOSO{" "}
+                      <span>Ver riscos</span>
+                    </summary>
+                    <TriangleAlert size={20} />
+                    <div>
+                      <strong>PRÓXIMO TRECHO: MAIS PERIGOSO</strong>
+                      <span>
+                        Perigos: {Math.round(encounter.threat.dangerChance)}% →{" "}
+                        {Math.round(encounter.nextThreat.dangerChance)}%
+                      </span>
+                      <span>
+                        Testes: +{Math.round((encounter.nextThreat.targetMultiplier - 1) * 100)}% de
+                        dificuldade desde a partida
+                      </span>
+                      <span>
+                        Inimigos: +{Math.round((encounter.nextThreat.enemyHpMultiplier - 1) * 100)}%
+                        HP / +
+                        {Math.round((encounter.nextThreat.enemyAttributeMultiplier - 1) * 100)}%
+                        atributos
+                      </span>
+                      <span>
+                        Travessia: −{encounter.advanceCost} Ki · {snapshot.character.ki} →{" "}
+                        {Math.max(0, snapshot.character.ki - encounter.advanceCost)} Ki
+                      </span>
+                    </div>
+                  </details>
+                )}
+                <div className="checkpoint-actions">
+                  <button
+                    className="button primary"
+                    aria-label="Voltar em segurança"
+                    disabled={busy}
+                    onClick={() =>
+                      onAction({
+                        action: "exploration.return",
+                        encounterId: encounter.id,
+                        revision: encounter.revision,
+                      })
+                    }
+                  >
+                    <Package size={18} />
+                    VOLTAR · guardar achados
+                  </button>
+                  {encounter.depth < encounter.maxDepth && (
+                    <button
+                      className="button danger"
+                      aria-label={
+                        battleCooldown > 0
+                          ? "Recuperando fôlego · " + battleCooldown + "s"
+                          : "Avançar ao trecho " +
+                            (encounter.depth + 1) +
+                            " · −" +
+                            encounter.advanceCost +
+                            " Ki"
+                      }
+                      disabled={
+                        busy ||
+                        snapshot.character.ki < encounter.advanceCost ||
+                        battleCooldown > 0 ||
+                        snapshot.character.hp <= 0
+                      }
+                      onClick={() =>
+                        onAction({
+                          action: "exploration.advance",
+                          encounterId: encounter.id,
+                          revision: encounter.revision,
+                        })
+                      }
+                    >
+                      <Route size={18} />
+                      {battleCooldown > 0
+                        ? "Recuperando fôlego · " + battleCooldown + "s"
+                        : "CONTINUAR · −" + encounter.advanceCost + " KI"}
+                    </button>
+                  )}
+                </div>
+                {encounter.depth < encounter.maxDepth &&
+                  snapshot.character.ki < encounter.advanceCost && (
+                    <p className="exploration-risk">
+                      Ki insuficiente. Use uma provisão ou volte em segurança.
+                    </p>
+                  )}
+              </div>
             ) : (
               <div className="exploration-choices">
                 {encounter.choices.map((choice) => (
-                  <button
+                  <ExplorationDecision
                     key={choice.id}
-                    className="exploration-choice"
-                    disabled={busy || Boolean(choice.reasons.length)}
-                    onClick={() =>
+                    choice={choice}
+                    snapshot={snapshot}
+                    busy={busy}
+                    onChoose={() =>
                       onAction({
                         action: "exploration.choose",
                         encounterId: encounter.id,
@@ -235,45 +477,24 @@ export function ExplorationPanel({
                         choiceId: choice.id,
                       })
                     }
-                  >
-                    <div>
-                      <strong>{choice.label}</strong>
-                      <span className={choice.chance < 100 ? "chance-tested" : "chance-safe"}>
-                        {choice.chance}%
-                        {choice.check
-                          ? ` · ${attributeLabels[choice.check.attribute]}`
-                          : " · GARANTIDO"}
-                      </span>
-                    </div>
-                    <p>{choice.description}</p>
-                    <small>
-                      <TriangleAlert size={13} />
-                      {choice.risk}
-                    </small>
-                    <div className="exploration-choice-cost">
-                      {choice.cost?.ki ? <span>{choice.cost.ki} Ki</span> : null}
-                      {choice.cost?.zeni ? <span>◈ {choice.cost.zeni} Zeni</span> : null}
-                      {choice.cost?.items?.map((c) => (
-                        <span key={c.itemId}>
-                          {c.quantity}×{" "}
-                          {snapshot.catalog.items.find((i) => i.id === c.itemId)?.name}
-                        </span>
-                      ))}
-                      {!choice.cost && <span>Sem custo</span>}
-                    </div>
-                    {choice.reasons.length > 0 && (
-                      <em>
-                        <LockKeyhole size={13} />
-                        {choice.reasons.join(" · ")}
-                      </em>
-                    )}
-                    <ArrowRight className="choice-arrow" size={18} />
-                  </button>
+                  />
                 ))}
               </div>
             )}
-            <Finds reward={encounter.pending} snapshot={snapshot} pending />
-            {encounter.status === "active" && (
+            {encounter.status === "checkpoint" ? (
+              <Finds reward={encounter.pending} snapshot={snapshot} pending />
+            ) : (
+              <details className="expedition-satchel">
+                <summary>
+                  <Package size={18} /> Achados ·{" "}
+                  {encounter.pending.items.reduce((sum, item) => sum + item.quantity, 0)} itens{" "}
+                  {encounter.pending.zeni ? "· ◈ " + encounter.pending.zeni : ""}
+                  <span>EM RISCO</span>
+                </summary>
+                <Finds reward={encounter.pending} snapshot={snapshot} pending />
+              </details>
+            )}
+            {encounter.status !== "battle" && (
               <div className="exploration-supplies">
                 <span>
                   <Heart size={16} /> Provisões
@@ -289,32 +510,42 @@ export function ExplorationPanel({
                     {snapshot.catalog.items.find((i) => i.id === o.itemId)?.name} ×{o.quantity}
                   </button>
                 ))}
-                <button
-                  className="button danger small"
-                  disabled={busy}
-                  onClick={() =>
-                    onAction({
-                      action: "exploration.abandon",
-                      encounterId: encounter.id,
-                      revision: encounter.revision,
-                    })
-                  }
-                >
-                  Abandonar · perder achados
-                </button>
+                {encounter.status !== "ambush" && (
+                  <button
+                    className="button danger small"
+                    disabled={busy}
+                    onClick={() =>
+                      onAction({
+                        action: "exploration.abandon",
+                        encounterId: encounter.id,
+                        revision: encounter.revision,
+                      })
+                    }
+                  >
+                    Abandonar · perder achados
+                  </button>
+                )}
               </div>
             )}
+            {encounter.feedback?.gained.items.length && !encounter.battleId ? (
+              <BattleLootReveal
+                key={`loot-${encounter.feedback.id}`}
+                battle={{ id: encounter.feedback.id, drops: encounter.feedback.gained.items }}
+                items={snapshot.catalog.items}
+                enabled
+                reveal={revealId === encounter.feedback.id}
+                pending
+                onComplete={() => onPresentationComplete(encounter.feedback!.id)}
+              />
+            ) : null}
           </div>
         </article>
-      ) : (
+      ) : !showResult ? (
         <article className="panel exploration-departure">
           <div>
             <span className="eyebrow orange">DESCOBRIR É ASSUMIR RISCOS</span>
             <h2>O que existe além da trilha?</h2>
-            <p>
-              Materiais, encontros, tesouros e caminhos escondidos. Cada saída abre um encontro;
-              suas escolhas decidem o que volta na mochila.
-            </p>
+            <p>Cinco trechos. Mais perigo. Mais achados. Você decide quando voltar.</p>
           </div>
           <label>
             Seu caminho
@@ -367,53 +598,64 @@ export function ExplorationPanel({
             </p>
           )}
           {snapshot.character.hp <= 0 && <p>Recupere seu HP antes de explorar.</p>}
-          <div className="exploration-odds">
-            {Object.entries(explorationWeightsForRoute(chosenRoute)).map(([category, weight]) => (
-              <span key={category}>
-                {weight.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%{" "}
-                {categoryLabels[category as ExplorationCategory].toLocaleLowerCase("pt-BR")}
-              </span>
-            ))}
-          </div>
-          <p className="exploration-risk">
-            <TriangleAlert size={16} /> Falhas podem ser fatais e perder os achados deste encontro.
-            Itens anteriores estão protegidos. Coletas repetidas não dão XP.
-          </p>
+          <details className="rpg-more-info departure-details">
+            <summary>Encontros e riscos</summary>
+            <div className="exploration-odds">
+              {Object.entries(explorationWeightsForRoute(chosenRoute)).map(([category, weight]) => (
+                <span key={category}>
+                  {weight.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%{" "}
+                  {categoryLabels[category as ExplorationCategory].toLocaleLowerCase("pt-BR")}
+                </span>
+              ))}
+            </div>
+            <p>
+              Falhas podem ser fatais. Achados de todos os trechos ficam em risco; itens anteriores
+              estão protegidos. Coletas não dão XP.
+            </p>
+          </details>
         </article>
-      )}
-      {!encounter && result && (
+      ) : null}
+      {showResult && (
         <article
           className={`panel exploration-resolution resolution-${result.status}`}
           aria-label="Resultado da exploração"
         >
           <span className="eyebrow">
             {result.status === "success"
-              ? "ENCONTRO CONCLUÍDO"
+              ? "EXPEDIÇÃO CONCLUÍDA"
               : result.status === "failed"
-                ? "ENCONTRO FRACASSADO"
-                : "ENCONTRO ABANDONADO"}
+                ? "EXPEDIÇÃO FRACASSADA"
+                : "EXPEDIÇÃO ABANDONADA"}
           </span>
           <h3>{result.title}</h3>
-          <p>{result.message}</p>
-          <Finds reward={result.rewards} snapshot={snapshot} />
-          {result.lost.items.length > 0 && (
-            <p className="exploration-risk">
-              Perdidos:{" "}
-              {result.lost.items
-                .map(
-                  (i) =>
-                    `${snapshot.catalog.items.find((x) => x.id === i.itemId)?.name} ×${i.quantity}`,
-                )
-                .join(" · ")}
-            </p>
+          <p>
+            {result.status === "success"
+              ? "Achados guardados!"
+              : "Você perdeu os achados da trilha."}
+          </p>
+          {result.feedback && result.status !== "success" && (
+            <ExplorationFeedbackCard
+              key={result.feedback.id}
+              feedback={result.feedback}
+              snapshot={snapshot}
+              reveal={revealId === result.id || revealId === result.feedback.id}
+              onComplete={() => onPresentationComplete(revealId ?? result.id)}
+            />
           )}
+          {result.status === "success" && <Finds reward={result.rewards} snapshot={snapshot} />}
           <details>
             <summary>Diário deste encontro</summary>
             {result.log.map((line, index) => (
               <p key={index}>{line}</p>
             ))}
           </details>
-          {(!result.battleId || result.battleId !== snapshot.latestBattle?.id) && (
+          <button
+            className="button primary result-continue"
+            onClick={() => setDismissedResult(result.id)}
+          >
+            Continuar exploração <ArrowRight size={17} />
+          </button>
+          {result.status === "success" && (
             <BattleLootReveal
               key={result.id}
               battle={{ id: result.id, drops: result.rewards.items }}

@@ -10,6 +10,10 @@ import {
   presentExploration,
   explorationChance,
   choiceAvailability,
+  advanceExploration,
+  explorationWeightsForRoute,
+  expeditionThreat,
+  explorationEnemy,
 } from "@/game/exploration/rules";
 const character = {
   level: 25,
@@ -191,7 +195,8 @@ describe("Exploração: regras e catálogo", () => {
     expect(visible).not.toHaveProperty("rolls");
     expect(visible).not.toHaveProperty("event");
     expect(visible.choices[0]).not.toHaveProperty("success");
-    expect(visible.choices[0]).not.toHaveProperty("failure");
+    expect(visible.choices[0].failure).toMatchObject({ damage: 40, losesFinds: true });
+    expect(visible.choices[0].failure).not.toHaveProperty("reward");
     expect(visible.choices[0]).not.toHaveProperty("onceFlag");
   });
   it("rejeita revisão antiga, escolha de outra etapa e encontro finalizado", () => {
@@ -207,7 +212,7 @@ describe("Exploração: regras e catálogo", () => {
     const s = createExplorationSession(event("floresta-npc"), "test", attrs, () => 0);
     expect(() => resolveExploration(s, 0, "help", ctx)).toThrow();
     const withItems = { ...ctx, inventory: [{ itemId: "erva", quantity: 3 }] };
-    expect(resolveExploration(s, 0, "help", withItems).session.granted.flags).toEqual([
+    expect(resolveExploration(s, 0, "help", withItems).session.pending.flags).toEqual([
       "discovery:floresta:npc",
     ]);
   });
@@ -250,8 +255,116 @@ describe("Exploração: regras e catálogo", () => {
   it("emboscada não guarda achados antes da vitória", () => {
     const s = createExplorationSession(event("floresta-danger"), "test", attrs, () => 0.99);
     const a = resolveExploration(s, 0, "cross", ctx).session;
-    expect(a.status).toBe("battle");
+    expect(a.status).toBe("ambush");
     expect(a.enemyId).toBe("lobo");
     expect(a.granted.items).toEqual([]);
+  });
+  it("acumula vários encontros sem conceder nada antes do retorno", () => {
+    const s = createExplorationSession(event("floresta-danger"), "test", attrs, () => 0);
+    const first = resolveExploration(s, 0, "cross", ctx).session;
+    expect(first.status).toBe("checkpoint");
+    const second = advanceExploration(first, event("floresta-danger"), attrs, () => 0, 100);
+    expect(second.cost).toBe(2);
+    expect(second.session).toMatchObject({ depth: 2, revision: 2, status: "active" });
+    expect(second.session.pending.items).toEqual(first.pending.items);
+    const completed = resolveExploration(second.session, 2, "cross", ctx).session;
+    expect(completed.pending.items).toEqual([{ itemId: "erva", quantity: 2 }]);
+    expect(completed.granted.items).toEqual([]);
+    expect(finishExploration(completed, "success", "Voltou").granted.items).toEqual(
+      completed.pending.items,
+    );
+  });
+  it("perder mais adiante descarta também os achados dos trechos anteriores", () => {
+    const first = resolveExploration(
+      createExplorationSession(event("kame-house-danger"), "test", attrs, () => 0),
+      0,
+      "cross",
+      ctx,
+    ).session;
+    const next = advanceExploration(
+      first,
+      event("kame-house-danger"),
+      attrs,
+      () => 0.999,
+      100,
+    ).session;
+    const failed = resolveExploration(next, next.revision, "cross", ctx);
+    expect(failed.session.status).toBe("failed");
+    expect(failed.session.lost.items).toEqual(first.pending.items);
+    expect(failed.session.feedback).toMatchObject({ kind: "loss", hpLost: 48, kiSpent: 4 });
+    expect(failed.damage).toBe(48);
+  });
+  it("aumenta perigo, testes, custos e inimigos sem alterar o catálogo", () => {
+    let previous = 0;
+    for (let depth = 1; depth <= 5; depth++) {
+      const w = explorationWeightsForRoute(undefined, depth);
+      expect(Object.values(w).reduce((a, b) => a + b, 0)).toBeCloseTo(100);
+      expect(w.discovery).toBe(4.5);
+      expect(w.exceptional).toBe(0.5);
+      expect(w.danger).toBeGreaterThan(previous);
+      previous = w.danger;
+    }
+    const definition = event("floresta-danger");
+    const before = structuredClone(definition);
+    const fifth = createExplorationSession(definition, "test", attrs, () => 0, null, 5);
+    expect(fifth.event.stages[0].choices[0].check!.target).toBe(24);
+    expect(fifth.event.stages[0].choices[0].cost!.ki).toBe(4);
+    expect(definition).toEqual(before);
+    const enemy = seedCatalog.enemies.find((e) => e.id === "lobo")!;
+    expect(explorationEnemy(enemy, 5).maxHp).toBe(enemy.maxHp * 2);
+    expect(explorationEnemy(enemy, 5).attributes.strength).toBeGreaterThan(
+      enemy.attributes.strength,
+    );
+    expect(expeditionThreat(5).targetMultiplier).toBe(2.4);
+  });
+  it("não permite avançar sem Ki, durante emboscada, ou depois do quinto trecho", () => {
+    const active = createExplorationSession(event("floresta-danger"), "test", attrs, () => 0);
+    expect(() =>
+      advanceExploration(active, event("floresta-danger"), attrs, () => 0, 100),
+    ).toThrow();
+    const checkpoint = resolveExploration(active, 0, "cross", ctx).session;
+    expect(() =>
+      advanceExploration(checkpoint, event("floresta-danger"), attrs, () => 0, 1),
+    ).toThrow();
+    expect(() =>
+      advanceExploration(
+        { ...checkpoint, depth: 5 },
+        event("floresta-danger"),
+        attrs,
+        () => 0,
+        100,
+      ),
+    ).toThrow();
+  });
+  it("descobertas pendentes impedem repetir a mesma recompensa na expedição", () => {
+    const s = createExplorationSession(event("floresta-discovery"), "test", attrs, () => 0);
+    const first = resolveExploration(s, 0, "discover", ctx).session;
+    const next = advanceExploration(
+      first,
+      event("floresta-discovery"),
+      attrs,
+      () => 0,
+      100,
+    ).session;
+    expect(() => resolveExploration(next, next.revision, "discover", ctx)).toThrow();
+    expect(next.pending.flags).toEqual(["discovery:floresta:route"]);
+    expect(next.granted.flags).toEqual([]);
+  });
+  it("recarregar não ressorteia os resultados e mostra consequências reais sem revelar o sorteio", () => {
+    const s = createExplorationSession(
+      event("kame-house-danger"),
+      "test",
+      attrs,
+      () => 0.999,
+      null,
+      4,
+    );
+    const liveCtx = { ...ctx, character: { ...character, hp: 10 } };
+    const visible = presentExploration(JSON.parse(JSON.stringify(s)), liveCtx);
+    expect(visible.choices[0].failure).toMatchObject({ damage: 64, fatal: true, losesFinds: true });
+    expect(visible.choices[0]).not.toHaveProperty("rolls");
+    expect(resolveExploration(s, 0, "cross", liveCtx)).toEqual(
+      resolveExploration(JSON.parse(JSON.stringify(s)), 0, "cross", liveCtx),
+    );
   });
 });

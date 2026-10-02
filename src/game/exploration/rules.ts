@@ -1,5 +1,6 @@
 import { unmetRequirements } from "../requirements";
-import type { Attributes, CharacterState, ItemDefinition } from "../types";
+import type { Attributes, CharacterState, ItemDefinition, EnemyDefinition } from "../types";
+import { defeatLoss } from "../economy";
 import type {
   ActiveExploration,
   ExplorationCategory,
@@ -20,6 +21,34 @@ export const explorationWeights: Record<ExplorationCategory, number> = {
   discovery: 4.5,
   exceptional: 0.5,
 };
+export const expeditionMaxDepth = 5;
+export const expeditionAdvanceCost = (depth: number) => depth * 2;
+export function expeditionThreat(depth: number, route?: ExplorationRoute) {
+  const step = Math.max(0, Math.min(expeditionMaxDepth - 1, depth - 1));
+  return {
+    dangerChance: explorationWeightsForRoute(route, depth).danger,
+    targetMultiplier: 1 + step * 0.35,
+    enemyHpMultiplier: 1 + step * 0.25,
+    enemyAttributeMultiplier: 1 + step * 0.18,
+  };
+}
+export const isPendingExploration = (session: ExplorationSession) =>
+  ["active", "checkpoint", "ambush", "battle"].includes(session.status);
+export function explorationEnemy(enemy: EnemyDefinition, depth: number): EnemyDefinition {
+  const threat = expeditionThreat(depth);
+  return {
+    ...enemy,
+    maxHp: Math.ceil(enemy.maxHp * threat.enemyHpMultiplier),
+    xpReward: Math.ceil(enemy.xpReward * (1 + (depth - 1) * 0.2)),
+    zeniReward: Math.ceil(enemy.zeniReward * (1 + (depth - 1) * 0.2)),
+    attributes: Object.fromEntries(
+      Object.entries(enemy.attributes).map(([key, value]) => [
+        key,
+        Math.ceil(value * threat.enemyAttributeMultiplier),
+      ]),
+    ) as Attributes,
+  };
+}
 const categoryOrder: ExplorationCategory[] = [
   "gather",
   "npc",
@@ -30,6 +59,7 @@ const categoryOrder: ExplorationCategory[] = [
 ];
 export function explorationWeightsForRoute(
   route?: ExplorationRoute,
+  depth = 1,
 ): Record<ExplorationCategory, number> {
   const commonTotal = categoryOrder
     .slice(0, 4)
@@ -38,7 +68,7 @@ export function explorationWeightsForRoute(
         sum + explorationWeights[key] * (route?.favoredCategories.includes(key) ? 2 : 1),
       0,
     );
-  return Object.fromEntries(
+  const weights = Object.fromEntries(
     categoryOrder.map((key) => [
       key,
       categoryOrder.indexOf(key) < 4
@@ -47,6 +77,15 @@ export function explorationWeightsForRoute(
         : explorationWeights[key],
     ]),
   ) as Record<ExplorationCategory, number>;
+  const danger = Math.min(60, weights.danger + Math.max(0, depth - 1) * 10);
+  const factor = (95 - danger) / (95 - weights.danger);
+  return {
+    ...weights,
+    danger,
+    gather: weights.gather * factor,
+    npc: weights.npc * factor,
+    treasure: weights.treasure * factor,
+  };
 }
 export const emptyExplorationReward = (): ExplorationReward => ({
   items: [],
@@ -78,6 +117,8 @@ type Context = {
   inventory: { itemId: string; quantity: number }[];
   items: ItemDefinition[];
   maxHp: number;
+  enemies?: EnemyDefinition[];
+  routes?: ExplorationRoute[];
 };
 export function selectExplorationEvent(
   events: ExplorationEventDefinition[],
@@ -85,6 +126,7 @@ export function selectExplorationEvent(
   ctx: Context,
   random: () => number,
   route?: ExplorationRoute,
+  depth = 1,
 ) {
   const eligible = events.filter(
     (event) =>
@@ -98,7 +140,7 @@ export function selectExplorationEvent(
       "Esta região ainda não possui encontros disponíveis.",
     );
   // Routes favor common occurrences. Valuable discoveries retain their original odds.
-  const weights = explorationWeightsForRoute(route);
+  const weights = explorationWeightsForRoute(route, depth);
   const roll = random() * 100;
   let total = 0,
     category = categoryOrder[0];
@@ -141,7 +183,10 @@ function rollReward(
     flags: [...(definition?.flags ?? [])],
   };
 }
-function combine(a: ExplorationReward, b: ExplorationReward): ExplorationReward {
+export function combineExplorationRewards(
+  a: ExplorationReward,
+  b: ExplorationReward,
+): ExplorationReward {
   const quantities = new Map<string, number>();
   for (const item of [...a.items, ...b.items])
     quantities.set(item.itemId, (quantities.get(item.itemId) ?? 0) + item.quantity);
@@ -158,12 +203,47 @@ export function createExplorationSession(
   attributes: Attributes,
   random: () => number,
   routeId: string | null = null,
+  depth = 1,
 ): ExplorationSession {
+  if (!Number.isInteger(depth) || depth < 1 || depth > expeditionMaxDepth)
+    throw new ExplorationRuleError("INVALID_DEPTH", "Trecho de exploração inválido.");
+  const definition = structuredClone(event);
+  const threat = expeditionThreat(depth);
+  for (const stage of definition.stages)
+    for (const choice of stage.choices) {
+      if (choice.check)
+        choice.check.target = Math.ceil(choice.check.target * threat.targetMultiplier);
+      if (choice.cost?.ki) choice.cost.ki = Math.ceil(choice.cost.ki * (1 + (depth - 1) * 0.25));
+      for (const outcome of [choice.success, choice.failure])
+        if (outcome?.damageHpFraction) {
+          outcome.damageHpFraction = Math.min(0.9, outcome.damageHpFraction + (depth - 1) * 0.08);
+          if (depth > 1)
+            outcome.message = outcome.loseFinds
+              ? "Você escapou ferido e perdeu os achados da expedição."
+              : "O perigo feriu você na passagem.";
+        }
+      // Supplies grow deeper in the trail; unique relics and discovery XP never multiply.
+      if (event.category !== "exceptional") {
+        for (const item of choice.success.reward?.items ?? []) {
+          item.min += Math.floor((depth - 1) / 2);
+          item.max += Math.floor((depth - 1) / 2);
+        }
+        if (choice.success.reward?.zeni) {
+          choice.success.reward.zeni.min = Math.ceil(
+            choice.success.reward.zeni.min * (1 + (depth - 1) * 0.25),
+          );
+          choice.success.reward.zeni.max = Math.ceil(
+            choice.success.reward.zeni.max * (1 + (depth - 1) * 0.25),
+          );
+        }
+      }
+    }
   return {
     id,
     areaId: event.areaId,
     routeId,
-    event: structuredClone(event),
+    event: definition,
+    depth,
     stageId: event.stages[0].id,
     revision: 0,
     status: "active",
@@ -174,7 +254,7 @@ export function createExplorationSession(
     message: "",
     log: [],
     rolls: Object.fromEntries(
-      event.stages.flatMap((stage) =>
+      definition.stages.flatMap((stage) =>
         stage.choices.map((choice) => [
           `${stage.id}:${choice.id}`,
           {
@@ -231,7 +311,10 @@ export function choiceAvailability(
     !ctx.inventory.some((item) => item.itemId === requirement.itemId && item.quantity > 0)
   )
     reasons.push("Ferramenta necessária");
-  if (choice.onceFlag && ctx.character.flags.includes(choice.onceFlag))
+  if (
+    choice.onceFlag &&
+    [...ctx.character.flags, ...session.pending.flags].includes(choice.onceFlag)
+  )
     reasons.push("Você já concluiu esta descoberta");
   return {
     reasons,
@@ -252,11 +335,76 @@ export function finishExploration(
   const next = structuredClone(session);
   next.status = status;
   next.message = message;
-  if (status === "success") next.granted = combine(next.granted, next.pending);
-  else next.lost = combine(next.lost, next.pending);
+  if (status === "success") next.granted = combineExplorationRewards(next.granted, next.pending);
+  else next.lost = combineExplorationRewards(next.lost, next.pending);
+  next.feedback = {
+    id: `${next.id}:${next.revision}:end`,
+    kind: status === "success" ? "return" : "loss",
+    title:
+      status === "success"
+        ? "De volta! Achados guardados."
+        : "Expedição encerrada · achados perdidos",
+    message,
+    gained: status === "success" ? next.granted : emptyExplorationReward(),
+    lost: next.lost,
+    hpLost: status === "success" ? 0 : (next.feedback?.hpLost ?? 0),
+    kiSpent: status === "success" ? 0 : (next.feedback?.kiSpent ?? 0),
+    zeniSpent: status === "success" ? 0 : (next.feedback?.zeniSpent ?? 0),
+    zeniLost: next.feedback?.zeniLost ?? 0,
+    spentItems: status === "success" ? [] : (next.feedback?.spentItems ?? []),
+  };
   next.pending = emptyExplorationReward();
   next.log.push(message);
   return next;
+}
+export function advanceExploration(
+  session: ExplorationSession,
+  event: ExplorationEventDefinition,
+  attributes: Attributes,
+  random: () => number,
+  ki: number,
+) {
+  const depth = session.depth ?? 1;
+  if (event.areaId !== session.areaId)
+    throw new ExplorationRuleError(
+      "INVALID_AREA",
+      "O próximo trecho precisa estar na mesma região.",
+    );
+  if (session.status !== "checkpoint" || depth >= expeditionMaxDepth)
+    throw new ExplorationRuleError("CANNOT_ADVANCE", "Este trecho não permite avançar.");
+  const cost = expeditionAdvanceCost(depth);
+  if (ki < cost)
+    throw new ExplorationRuleError(
+      "NO_KI",
+      "Ki insuficiente para avançar. Use uma provisão ou volte em segurança.",
+    );
+  const next = createExplorationSession(
+    event,
+    session.id,
+    attributes,
+    random,
+    session.routeId,
+    depth + 1,
+  );
+  next.revision = session.revision + 1;
+  next.pending = structuredClone(session.pending);
+  next.lost = structuredClone(session.lost);
+  next.log = [...session.log, `Trecho ${depth + 1}: ${event.title}. Travessia: −${cost} Ki.`];
+  next.message = `Você avançou para o trecho ${depth + 1}. Os perigos aumentaram.`;
+  next.feedback = {
+    id: `${next.id}:${next.revision}`,
+    kind: "neutral",
+    title: `Trecho ${depth + 1} · perigo crescente`,
+    message: next.message,
+    gained: emptyExplorationReward(),
+    lost: emptyExplorationReward(),
+    hpLost: 0,
+    kiSpent: cost,
+    zeniSpent: 0,
+    zeniLost: 0,
+    spentItems: [],
+  };
+  return { session: next, cost };
 }
 export function resolveExploration(
   session: ExplorationSession,
@@ -285,29 +433,59 @@ export function resolveExploration(
   next.revision++;
   next.message = outcome.message;
   next.log.push(`${choice.label}: ${outcome.message}`);
-  next.pending = combine(next.pending, success ? rolled.success : rolled.failure);
+  const gained = success ? rolled.success : rolled.failure;
+  const damage = Math.min(
+    ctx.character.hp,
+    Math.floor(ctx.maxHp * (outcome.damageHpFraction ?? 0)),
+  );
+  next.feedback = {
+    id: `${next.id}:${next.revision}`,
+    kind: outcome.enemyId ? "ambush" : !success ? "loss" : "gain",
+    title: outcome.enemyId
+      ? "Sua passagem foi detectada!"
+      : !success
+        ? "A tentativa falhou!"
+        : gained.items.length
+          ? "Você encontrou suprimentos!"
+          : gained.flags.length
+            ? "Uma nova descoberta!"
+            : "Caminho livre!",
+    message: outcome.message,
+    gained,
+    lost: outcome.loseFinds ? structuredClone(next.pending) : emptyExplorationReward(),
+    hpLost: damage,
+    kiSpent: choice.cost?.ki ?? 0,
+    zeniSpent: choice.cost?.zeni ?? 0,
+    zeniLost: 0,
+    spentItems: choice.cost?.items ?? [],
+  };
+  next.pending = combineExplorationRewards(next.pending, gained);
   if (outcome.loseFinds) {
-    next.lost = combine(next.lost, next.pending);
+    next.lost = combineExplorationRewards(next.lost, next.pending);
     next.pending = emptyExplorationReward();
   }
   if (outcome.enemyId) {
-    next.status = "battle";
+    next.status = "ambush";
     next.enemyId = outcome.enemyId;
   } else if (outcome.nextStageId) next.stageId = outcome.nextStageId;
-  else
+  else if (choice.id === "retreat" || !success)
     return {
       session: finishExploration(next, success ? "success" : "failed", outcome.message),
       cost: choice.cost,
-      damage: Math.floor(ctx.maxHp * (outcome.damageHpFraction ?? 0)),
+      damage,
     };
+  else next.status = "checkpoint";
   return {
     session: next,
     cost: choice.cost,
-    damage: Math.floor(ctx.maxHp * (outcome.damageHpFraction ?? 0)),
+    damage,
   };
 }
 export function presentExploration(session: ExplorationSession, ctx: Context): ActiveExploration {
   const stage = session.event.stages.find((stage) => stage.id === session.stageId)!;
+  const depth = session.depth ?? 1;
+  const enemy = ctx.enemies?.find((e) => e.id === session.enemyId);
+  const route = ctx.routes?.find((r) => r.id === session.routeId);
   return {
     id: session.id,
     areaId: session.areaId,
@@ -323,13 +501,28 @@ export function presentExploration(session: ExplorationSession, ctx: Context): A
     revision: session.revision,
     stageTitle: stage.title,
     stageText: stage.text,
-    status: session.status as "active" | "battle",
+    status: session.status as ActiveExploration["status"],
+    depth,
+    maxDepth: expeditionMaxDepth,
+    advanceCost: expeditionAdvanceCost(depth),
+    threat: expeditionThreat(depth, route),
+    nextThreat: expeditionThreat(Math.min(expeditionMaxDepth, depth + 1), route),
+    feedback: session.feedback,
+    enemy: enemy
+      ? {
+          id: enemy.id,
+          name: enemy.name,
+          level: enemy.level,
+          maxHp: explorationEnemy(enemy, depth).maxHp,
+        }
+      : undefined,
+    defeatZeni: defeatLoss(ctx.character.zeni),
     pending: session.pending,
     message: session.message,
     log: session.log,
     battleId: session.battleId,
     choices:
-      session.status === "battle"
+      session.status !== "active"
         ? []
         : stage.choices.map((choice) => ({
             id: choice.id,
@@ -338,6 +531,16 @@ export function presentExploration(session: ExplorationSession, ctx: Context): A
             risk: choice.risk,
             cost: choice.cost,
             check: choice.check,
+            benefit: choice.success.reward ?? {},
+            failure: {
+              damage: Math.floor(ctx.maxHp * (choice.failure?.damageHpFraction ?? 0)),
+              fatal:
+                Math.floor(ctx.maxHp * (choice.failure?.damageHpFraction ?? 0)) >=
+                  ctx.character.hp && Boolean(choice.failure?.damageHpFraction),
+              losesFinds: Boolean(choice.failure?.loseFinds || choice.failure?.enemyId),
+              enemyName: ctx.enemies?.find((e) => e.id === choice.failure?.enemyId)?.name,
+              zeniPenalty: choice.failure?.enemyId ? defeatLoss(ctx.character.zeni) : 0,
+            },
             ...choiceAvailability(session, choice, ctx),
           })),
   };
@@ -355,5 +558,7 @@ export function explorationResult(session: ExplorationSession): ExplorationResul
     lost: session.lost,
     log: session.log,
     battleId: session.battleId,
+    feedback: session.feedback,
+    depth: session.depth ?? 1,
   };
 }

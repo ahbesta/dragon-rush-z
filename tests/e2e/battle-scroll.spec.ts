@@ -88,6 +88,12 @@ for (const section of ["Batalhar", "Explorar"]) {
       baseURL,
     }) => {
       const email = `battle-scroll-${randomUUID()}@example.test`;
+      await page.addLocatorHandler(
+        page.locator("dialog.quest-completion[open]"),
+        async (dialog) => {
+          await dialog.getByRole("button", { name: /Depois/ }).click();
+        },
+      );
       emails.push(email);
       await page.setViewportSize({ width, height: 700 });
       const signup = await page.request.post("/api/auth/sign-up/email", {
@@ -145,6 +151,10 @@ for (const section of ["Batalhar", "Explorar"]) {
           .getByRole("button", { name: "Batalhar", exact: true });
       };
       await (await startFight()).click();
+      if (section === "Explorar") {
+        await expect(page.locator(".expedition-ambush")).toBeVisible();
+        await page.getByRole("button", { name: "Enfrentar emboscada", exact: true }).click();
+      }
       const arena = page.locator(".battle-arena");
       await expect(arena).toHaveClass(/manual-battle/);
       await expect(arena.locator(".arena-xp-earned")).toHaveCount(0);
@@ -197,6 +207,10 @@ for (const section of ["Batalhar", "Explorar"]) {
       await go(page, section);
       const previousId = await arena.getAttribute("data-battle-id");
       await (await startFight()).click();
+      if (section === "Explorar") {
+        await expect(page.locator(".expedition-ambush")).toBeVisible();
+        await page.getByRole("button", { name: "Enfrentar emboscada", exact: true }).click();
+      }
       await expect(arena).not.toHaveAttribute("data-battle-id", previousId!);
       await expect(arena).toHaveClass(/arena-completed/);
       await expect
@@ -207,6 +221,8 @@ for (const section of ["Batalhar", "Explorar"]) {
         )
         .toBe(20);
       await expect(page.locator(".battle-arena-anchor")).toBeFocused();
+      await expect(arena.locator(".battle-result .combat-log")).toHaveCount(0);
+      await arena.getByRole("button", { name: /Ver batalha completa/ }).click();
       await expect(arena.locator(".battle-result .combat-log")).toBeVisible();
       await expect(page.locator(".page-heading h1")).toHaveText(section);
       await expect(page.locator('#game-navigation button[aria-current="page"]')).toHaveAttribute(
@@ -215,15 +231,26 @@ for (const section of ["Batalhar", "Explorar"]) {
       );
       if (section === "Explorar") {
         const firstId = await arena.getAttribute("data-battle-id");
+        if (await arena.getByRole("button", { name: "Pular animação", exact: true }).isVisible())
+          await arena.getByRole("button", { name: "Pular animação", exact: true }).click();
+        const closeDrops = page.getByRole("button", { name: "Fechar drops", exact: true });
+        if (await closeDrops.isVisible()) await closeDrops.click();
+        await arena.getByRole("button", { name: "Continuar", exact: true }).click();
+        await page.getByRole("button", { name: "Voltar em segurança", exact: true }).click();
+        await expect(closeDrops).toBeVisible();
+        await closeDrops.click();
         await database.db
           .update(s.characters)
           .set({ nextBattleAt: null })
           .where(eq(s.characters.id, initial.character.id));
+        await page.getByRole("button", { name: "Continuar exploração", exact: true }).click();
         await page.evaluate(() => window.dispatchEvent(new Event("focus")));
         await expect(
           page.getByRole("button", { name: "Procurar um encontro", exact: true }),
         ).toBeEnabled();
         await (await startFight()).click();
+        await expect(page.locator(".expedition-ambush")).toBeVisible();
+        await page.getByRole("button", { name: "Enfrentar emboscada", exact: true }).click();
         await expect(arena).not.toHaveAttribute("data-battle-id", firstId!);
         await expect(page.locator(".page-heading h1")).toHaveText("Explorar");
         await expect

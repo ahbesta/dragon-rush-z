@@ -9,6 +9,11 @@ import {
   presentExploration,
   explorationResult,
   ExplorationRuleError,
+  isPendingExploration,
+  advanceExploration,
+  explorationEnemy,
+  combineExplorationRewards,
+  emptyExplorationReward,
 } from "@/game/exploration/rules";
 import type { ExplorationSession } from "@/game/exploration/types";
 import { deriveBuildStats } from "@/game/attributes";
@@ -207,7 +212,9 @@ export async function executeAction(
     if (existingReceipt) return existingReceipt;
     const now = await clock(tx);
     const catalog = await readCatalog(tx, {
-      includeExplorationEvents: input.action === "exploration.start" || input.action === "explore",
+      includeExplorationEvents: ["exploration.start", "exploration.advance", "explore"].includes(
+        input.action,
+      ),
     });
     const race =
       catalog.races.find((r) => r.id === character.raceId) ?? missing("Raça indisponível.");
@@ -252,6 +259,9 @@ export async function executeAction(
       ![
         "exploration.choose",
         "exploration.abandon",
+        "exploration.advance",
+        "exploration.return",
+        "exploration.fight",
         "item.use",
         "combat.mode",
         "battle.turn",
@@ -272,6 +282,8 @@ export async function executeAction(
       powerLevel: statsFor(character, catalog).powerLevel,
       maxHp: statsFor(character, catalog).maxHp,
       items: catalog.items,
+      enemies: catalog.enemies,
+      routes: catalog.explorationRoutes,
       inventory: await tx
         .select()
         .from(s.inventory)
@@ -281,7 +293,7 @@ export async function executeAction(
       if (!exploration)
         throw new GameError("ENCOUNTER_NOT_PENDING", "Encontro não encontrado.", 409);
       exploration.state = state;
-      const finished = state.status !== "active" && state.status !== "battle";
+      const finished = !isPendingExploration(state);
       await tx
         .update(s.explorationSessions)
         .set({ state, completedAt: finished ? now : null })
@@ -300,14 +312,21 @@ export async function executeAction(
       previousUsed: { itemId: string; quantity: number }[] = [],
     ) => {
       await consumeBattleItems(tx, character.id, battle.usedItems ?? [], previousUsed);
+      const hpBeforeBattle = character.hp;
+      const kiBeforeBattle = character.ki;
       character.hp = battle.playerHp;
       character.ki = battle.playerKi;
+      const expeditionBattle =
+        exploration?.state.status === "battle" && exploration.state.battleId === battle.id;
       if (battle.outcome === "victory") {
-        grantExperience(character, battle.xp, race);
-        character.zeni += battle.zeni;
+        if (!expeditionBattle) {
+          grantExperience(character, battle.xp, race);
+          character.zeni += battle.zeni;
+          for (const drop of battle.drops)
+            await addItem(tx, character.id, drop.itemId, drop.quantity);
+        }
         character.flags = [...new Set([...character.flags, `defeated:${battle.enemyId}`])];
-        for (const drop of battle.drops)
-          await addItem(tx, character.id, drop.itemId, drop.quantity);
+
         if (battle.version === 2)
           advanceQuests(
             character,
@@ -333,16 +352,39 @@ export async function executeAction(
         createdAt: now,
       });
       await tx.delete(s.activeBattles).where(eq(s.activeBattles.characterId, character.id));
-      if (exploration?.state.status === "battle" && exploration.state.battleId === battle.id) {
-        await persistExploration(
-          finishExploration(
-            exploration.state,
-            battle.outcome === "victory" ? "success" : "failed",
+      if (expeditionBattle && exploration) {
+        const state = structuredClone(exploration.state);
+        state.revision++;
+        state.feedback = {
+          id: `${state.id}:${state.revision}`,
+          kind: battle.outcome === "victory" ? "gain" : "loss",
+          title:
+            battle.outcome === "victory" ? "Emboscada vencida!" : "A emboscada levou seus achados!",
+          message:
             battle.outcome === "victory"
-              ? "Você venceu a emboscada e guardou os achados do encontro."
-              : "A emboscada terminou sem vitória. Os achados pendentes foram perdidos.",
-          ),
-        );
+              ? "Você sobreviveu. Recompensas e achados continuam em risco até voltar em segurança."
+              : "Os achados de todos os trechos foram perdidos. As provisões utilizadas não são devolvidas.",
+          gained:
+            battle.outcome === "victory"
+              ? { items: battle.drops, xp: battle.xp, zeni: battle.zeni, flags: [] }
+              : emptyExplorationReward(),
+          lost:
+            battle.outcome === "victory"
+              ? emptyExplorationReward()
+              : structuredClone(state.pending),
+          hpLost: Math.max(0, hpBeforeBattle - battle.playerHp),
+          kiSpent: Math.max(0, kiBeforeBattle - battle.playerKi),
+          zeniSpent: 0,
+          zeniLost: battle.zeniLost ?? 0,
+          spentItems: battle.usedItems ?? [],
+        };
+        if (battle.outcome === "victory") {
+          state.pending = combineExplorationRewards(state.pending, state.feedback.gained);
+          state.status = "checkpoint";
+          state.message = state.feedback.message;
+          state.log.push(state.message);
+          await persistExploration(state);
+        } else await persistExploration(finishExploration(state, "failed", state.feedback.message));
       }
       result.battle = battle;
       const enemyName = catalog.enemies.find((e) => e.id === battle.enemyId)?.name ?? "Inimigo";
@@ -411,6 +453,84 @@ export async function executeAction(
       } else await completeBattle(finishCombat(combat, random));
     };
     switch (input.action) {
+      case "exploration.advance":
+      case "exploration.return":
+      case "exploration.fight": {
+        if (
+          !exploration ||
+          exploration.id !== input.encounterId ||
+          exploration.state.revision !== input.revision
+        )
+          throw new GameError("STALE_ENCOUNTER", "O trecho mudou. Atualize a exploração.", 409);
+        const state = structuredClone(exploration.state);
+        try {
+          if (input.action === "exploration.return") {
+            if (!["active", "checkpoint"].includes(state.status))
+              throw new GameError(
+                "CANNOT_RETURN",
+                "A emboscada bloqueou sua saída. Enfrente o inimigo primeiro.",
+                409,
+              );
+            state.revision++;
+            await persistExploration(
+              finishExploration(
+                state,
+                "success",
+                "Você voltou em segurança. Todos os achados da expedição foram guardados.",
+              ),
+            );
+          } else if (input.action === "exploration.advance") {
+            if (state.status !== "checkpoint")
+              throw new GameError("CANNOT_ADVANCE", "Resolva o encontro antes de avançar.", 409);
+            if (character.hp <= 0)
+              throw new GameError("NO_HP", "Recupere seu HP antes de avançar.", 409);
+            if (character.nextBattleAt && now < character.nextBattleAt)
+              throw new GameError(
+                "COOLDOWN",
+                "Recupere o fôlego antes de avançar.",
+                409,
+                character.nextBattleAt.toISOString(),
+              );
+            const route = catalog.explorationRoutes?.find((r) => r.id === state.routeId);
+            const ctx = await explorationContext();
+            ctx.character = { ...character, flags: [...character.flags, ...state.pending.flags] };
+            const event = selectExplorationEvent(
+              catalog.explorationEvents ?? [],
+              state.areaId,
+              ctx,
+              random,
+              route,
+              (state.depth ?? 1) + 1,
+            );
+            const advanced = advanceExploration(state, event, stats, random, character.ki);
+            character.ki -= advanced.cost;
+            await persistExploration(advanced.session);
+          } else {
+            if (state.status !== "ambush")
+              throw new GameError("NO_AMBUSH", "Não há uma emboscada aguardando combate.", 409);
+            const enemy =
+              catalog.enemies.find((e) => e.id === state.enemyId) ??
+              missing("Inimigo indisponível.");
+            if (
+              enemy.boss ||
+              !catalog.encounters.some((e) => e.areaId === state.areaId && e.enemyId === enemy.id)
+            )
+              throw new GameError("INVALID_ENCOUNTER", "Emboscada inválida.", 409);
+            requireAllowed(character, catalog, enemy.requirements);
+            state.status = "battle";
+            state.revision++;
+            await persistExploration(state);
+            await engage(explorationEnemy(enemy, state.depth ?? 1), state.areaId);
+          }
+        } catch (error) {
+          if (error instanceof ExplorationRuleError)
+            throw new GameError(error.code, error.message, 409);
+          throw error;
+        }
+        if (!result.battle)
+          result.message = exploration.state.message || "Sua decisão foi registrada.";
+        break;
+      }
       case "explore":
       case "exploration.start": {
         if (character.hp <= 0)
@@ -485,7 +605,7 @@ export async function executeAction(
         if (
           !exploration ||
           exploration.id !== input.encounterId ||
-          exploration.state.status !== "active" ||
+          !["active", "checkpoint"].includes(exploration.state.status) ||
           exploration.state.revision !== input.revision
         )
           throw new GameError(
@@ -523,18 +643,6 @@ export async function executeAction(
                   )
                 : resolved.session;
             await persistExploration(state);
-            if (state.status === "battle") {
-              const enemy =
-                catalog.enemies.find((e) => e.id === state.enemyId) ??
-                missing("Inimigo indisponível.");
-              if (
-                enemy.boss ||
-                !catalog.encounters.some((e) => e.areaId === state.areaId && e.enemyId === enemy.id)
-              )
-                throw new GameError("INVALID_ENCOUNTER", "Emboscada inválida.", 409);
-              requireAllowed(character, catalog, enemy.requirements);
-              await engage(enemy, state.areaId);
-            }
           } catch (error) {
             if (error instanceof ExplorationRuleError)
               throw new GameError(error.code, error.message, 409);
@@ -958,6 +1066,8 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
                 maxHp: displayedStats.maxHp,
                 inventory,
                 items: catalog.items,
+                enemies: catalog.enemies,
+                routes: catalog.explorationRoutes,
               })
             : null,
         latestExploration: explorationHistory[0]

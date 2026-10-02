@@ -89,8 +89,10 @@ for (const width of [390, 1440])
       await expect(page.locator(".exploration-occurrence")).toBeVisible();
       expect((await state()).catalog.explorationEvents).toBeUndefined();
       await fixture("floresta-gather");
-      await page.getByRole("button", { name: /Recolher o que está perto/ }).click();
+      await page.getByRole("button", { name: /Recolher erva medicinal/ }).click();
       await expect(page.getByLabel("Achados pendentes")).toContainText("Erva medicinal");
+      await expect(page.locator(".arena-loot-saved")).toContainText("Achado pendente");
+      await page.getByRole("button", { name: "Fechar drops", exact: true }).click();
       expect((await state()).inventory.some((i: { itemId: string }) => i.itemId === "erva")).toBe(
         false,
       );
@@ -111,7 +113,11 @@ for (const width of [390, 1440])
       ).toBe(1);
       await fixture("floresta-discovery");
       await page.getByRole("button", { name: /Registrar o caminho/ }).click();
-      await expect(page.getByLabel("Resultado da exploração")).toContainText("Caminho descoberto");
+      await expect(page.locator(".expedition-checkpoint")).toBeVisible();
+      expect((await state()).activeExploration.pending.flags).toContain("discovery:floresta:route");
+      await page.getByRole("button", { name: "Voltar em segurança", exact: true }).click();
+      await expect(page.getByLabel("Resultado da exploração")).toContainText("descoberta");
+      await page.getByRole("button", { name: "Continuar exploração", exact: true }).click();
       await expect(page.getByRole("option", { name: /Gruta atrás da cachoeira/ })).toBeEnabled();
       await fixture("cidade-oeste-npc");
       await expect(page.locator(".exploration-npc-art")).toBeVisible();
@@ -121,7 +127,7 @@ for (const width of [390, 1440])
         .screenshot({ path: `.local/screenshots/exploration-bulma-${width}.png` });
       await page.getByRole("button", { name: /Ouvir e seguir viagem/ }).click();
       await fixture("floresta-gather", 0.999);
-      await page.getByRole("button", { name: /Recolher o que está perto/ }).click();
+      await page.getByRole("button", { name: /Recolher erva medicinal/ }).click();
       const modeResponse = await page.request.post("/api/game/actions", {
         headers,
         data: { action: "combat.mode", mode: "manual", idempotencyKey: randomUUID() },
@@ -129,6 +135,13 @@ for (const width of [390, 1440])
       expect(modeResponse.ok()).toBe(true);
       await page.reload();
       await page.getByRole("button", { name: /Buscar mais fundo/ }).click();
+      await expect(page.locator(".expedition-ambush")).toContainText("Lobo encontrou você");
+      await expect(page.locator(".battle-arena")).toHaveCount(0);
+      await expect(page.locator(".expedition-ambush")).toContainText("Todos os achados");
+      await page
+        .locator(".exploration-occurrence")
+        .screenshot({ path: ".local/screenshots/exploration-ambush-" + width + ".png" });
+      await page.getByRole("button", { name: "Enfrentar emboscada", exact: true }).click();
       await expect(page.locator(".battle-arena")).toBeVisible();
       await expect(page.locator(".page-heading h1")).toHaveText("Explorar");
       await expect
@@ -141,15 +154,63 @@ for (const width of [390, 1440])
       await go(page, "Personagem");
       await expect(page.getByRole("dialog")).toBeVisible();
       await page.keyboard.press("Escape");
-      await page.getByRole("button", { name: /Automático O guerreiro luta por você/ }).click();
+      await page.getByRole("button", { name: /^Automático$/ }).click();
       await expect(page.locator(".battle-arena")).toHaveClass(/arena-completed/);
       await expect(page.locator(".page-heading h1")).toHaveText("Explorar");
-      expect((await state()).activeExploration).toBeNull();
-      expect((await state()).latestExploration.battleId).toBe((await state()).latestBattle.id);
+      expect((await state()).activeExploration.status).toBe("checkpoint");
+      expect((await state()).activeExploration.battleId).toBe((await state()).latestBattle.id);
       await page.getByRole("button", { name: "Pular animação", exact: true }).click();
       await expect(page.locator(".arena-loot-reveal")).toBeVisible();
+      await page.getByRole("button", { name: "Fechar drops", exact: true }).click();
+      await page
+        .locator(".battle-result")
+        .getByRole("button", { name: "Continuar", exact: true })
+        .click();
+      await expect(page.getByLabel("Achados pendentes")).toContainText("Erva medicinal");
+      await page.getByRole("button", { name: "Voltar em segurança", exact: true }).click();
       await expect(page.getByLabel("Resultado da exploração")).toContainText("Erva medicinal");
       await page.getByRole("button", { name: "Fechar drops", exact: true }).click();
+      // An actual second encounter preserves all previous finds until safe return.
+      await fixture("floresta-danger");
+      await page.getByRole("button", { name: /Passar sem ser percebido/ }).click();
+      await page.getByRole("button", { name: "Fechar drops", exact: true }).click();
+      await expect(page.locator(".expedition-escalation")).toContainText("MAIS PERIGOSO");
+      const pending = (await state()).activeExploration.pending;
+      await page.getByRole("button", { name: /Avançar ao trecho 2/ }).click();
+      await expect(page.getByLabel("Progresso da expedição")).toContainText("Trecho 2 de 5");
+      expect((await state()).activeExploration.pending).toEqual(pending);
+      await page.reload();
+      await expect(page.getByLabel("Progresso da expedição")).toContainText("Trecho 2 de 5");
+      await page.getByRole("button", { name: /Voltar em segurança/ }).click();
+      await page.getByRole("button", { name: "Fechar drops", exact: true }).click();
+      // A failed environmental check announces both damage and all forfeited finds.
+      const failed = await fixture("kame-house-danger", 0.999);
+      const failedState = {
+        ...failed,
+        depth: 3,
+        pending: { items: [{ itemId: "erva", quantity: 2 }], zeni: 10, xp: 5, flags: [] },
+      };
+      await database.db
+        .update(s.explorationSessions)
+        .set({ state: failedState })
+        .where(eq(s.explorationSessions.id, failed.id));
+      await page.reload();
+      await page.getByRole("button", { name: /Passar sem ser percebido/ }).click();
+      await expect(page.getByRole("dialog", { name: "Perdas da exploração" })).toContainText(
+        "Erva medicinal",
+      );
+      await expect(page.getByRole("dialog", { name: "Perdas da exploração" })).toContainText("HP");
+      await page
+        .getByRole("dialog", { name: "Perdas da exploração" })
+        .screenshot({ path: ".local/screenshots/exploration-loss-" + width + ".png" });
+      await page.getByRole("button", { name: "Entendi as consequências", exact: true }).click();
+      await go(page, "Inventário");
+      await go(page, "Explorar");
+      await expect(page.getByRole("dialog", { name: "Perdas da exploração" })).toHaveCount(0);
+      await expect(page.getByLabel("Resultado da exploração")).toContainText("Erva medicinal");
+      await page.reload();
+      await go(page, "Explorar");
+      await expect(page.getByRole("dialog", { name: "Perdas da exploração" })).toHaveCount(0);
       await expect
         .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
         .toBe(true);
@@ -222,6 +283,31 @@ test("catálogo completo: 96 encontros e artes dos 16 destinos sem overflow", as
         await page
           .locator(".exploration-occurrence")
           .screenshot({ path: `.local/screenshots/exploration-npc-${event.npcId}.png` });
+      }
+    }
+    await database.db
+      .delete(s.explorationSessions)
+      .where(eq(s.explorationSessions.characterId, row.id));
+    await page.reload();
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const label of [
+        "Personagem",
+        "Treinamento",
+        "Inventário",
+        "Técnicas",
+        "Missões",
+        "Vilas e mercado",
+        "Ranking",
+        "Transformações",
+      ]) {
+        await go(page, label);
+        await expect
+          .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+          .toBe(true);
+        await page.locator(".game-main").screenshot({
+          path: `.local/screenshots/rpg-${label.replaceAll(" ", "-")}-${width}.png`,
+        });
       }
     }
   } finally {

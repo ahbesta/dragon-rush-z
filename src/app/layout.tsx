@@ -19,6 +19,7 @@ import "./profile.css";
 import "./rpg.css";
 import "./warrior-feedback.css";
 import "./exploration.css";
+import "./rpg-interface.css";
 export const metadata: Metadata = {
   title: "Dragon Rush Z • Sua jornada começa agora",
   description:

@@ -196,6 +196,14 @@ describe("Persistência PostgreSQL e transações", () => {
       revision: 0,
       choiceId: "cross",
     });
+    const warning = (await readSnapshot(database.db, owner))!;
+    expect(warning.activeExploration?.status).toBe("ambush");
+    expect(warning.activeExploration?.enemy?.name).toBe("Lobo");
+    expect(warning.activeBattle).toBeNull();
+    await expect(
+      command({ action: "exploration.return", encounterId: event.id, revision: 1 }),
+    ).rejects.toMatchObject({ code: "CANNOT_RETURN" });
+    await command({ action: "exploration.fight", encounterId: event.id, revision: 1 });
     const fighting = (await readSnapshot(database.db, owner))!;
     expect(fighting.activeExploration?.status).toBe("battle");
     expect(fighting.activeExploration?.battleId).toBe(fighting.activeBattle?.id);
@@ -205,10 +213,19 @@ describe("Persistência PostgreSQL e transações", () => {
     await command({ action: "combat.mode", mode: "automatic" });
     const done = (await readSnapshot(database.db, owner))!;
     expect(done.activeBattle).toBeNull();
-    expect(done.activeExploration).toBeNull();
-    expect(done.latestExploration?.status).toBe("success");
-    expect(done.latestExploration?.battleId).toBe(done.latestBattle?.id);
-    expect(done.character.xp).toBe(done.latestBattle?.xp);
+    expect(done.activeExploration?.status).toBe("checkpoint");
+    expect(done.character.xp).toBe(0);
+    expect(done.activeExploration?.pending.xp).toBe(done.latestBattle?.xp);
+    await command({
+      action: "exploration.return",
+      encounterId: event.id,
+      revision: done.activeExploration!.revision,
+    });
+    const banked = (await readSnapshot(database.db, owner))!;
+    expect(banked.activeExploration).toBeNull();
+    expect(banked.latestExploration?.status).toBe("success");
+    expect(banked.latestExploration?.battleId).toBe(banked.latestBattle?.id);
+    expect(banked.character.xp).toBe(banked.latestBattle?.xp);
   });
   it("recompensas pendentes são guardadas quando vence emboscada automática", async () => {
     await database.db
@@ -247,10 +264,127 @@ describe("Persistência PostgreSQL e transações", () => {
       revision: 1,
       choiceId: "push",
     });
+    const warning = (await readSnapshot(database.db, owner))!.activeExploration!;
+    expect(warning.status).toBe("ambush");
+    await command({
+      action: "exploration.fight",
+      encounterId: event.id,
+      revision: warning.revision,
+    });
+    const checkpoint = (await readSnapshot(database.db, owner))!;
+    expect(checkpoint.activeExploration?.status).toBe("checkpoint");
+    expect(checkpoint.character.xp).toBe(0);
+    await command({
+      action: "exploration.return",
+      encounterId: event.id,
+      revision: checkpoint.activeExploration!.revision,
+    });
     const done = (await readSnapshot(database.db, owner))!;
-    expect(done.latestExploration?.rewards.items).toEqual([{ itemId: "erva", quantity: 1 }]);
+    expect(done.latestExploration?.rewards.items.find((i) => i.itemId === "erva")?.quantity).toBe(
+      1 + (done.latestBattle?.drops.find((i) => i.itemId === "erva")?.quantity ?? 0),
+    );
     expect(done.inventory.find((i) => i.itemId === "erva")!.quantity).toBeGreaterThanOrEqual(1);
     expect(done.activeExploration).toBeNull();
+  });
+  it("avanço concorrente cobra uma vez, mantém a mochila pendente e bloqueia revisão antiga", async () => {
+    let index = 0;
+    await executeAction(
+      database.db,
+      owner,
+      { action: "exploration.start", areaId: "floresta", idempotencyKey: randomUUID() },
+      { random: () => (index++ === 0 ? 0.6 : 0) },
+    );
+    let snapshot = (await readSnapshot(database.db, owner))!;
+    await command({
+      action: "exploration.choose",
+      encounterId: snapshot.activeExploration!.id,
+      revision: 0,
+      choiceId: "cross",
+    });
+    snapshot = (await readSnapshot(database.db, owner))!;
+    const encounter = snapshot.activeExploration!,
+      ki = snapshot.character.ki;
+    const outcomes = await Promise.allSettled(
+      [0, 1, 2].map(() =>
+        command({
+          action: "exploration.advance",
+          encounterId: encounter.id,
+          revision: encounter.revision,
+        }),
+      ),
+    );
+    expect(outcomes.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const after = (await readSnapshot(database.db, owner))!;
+    expect(after.activeExploration).toMatchObject({
+      depth: 2,
+      revision: 2,
+      status: "active",
+      pending: encounter.pending,
+    });
+    expect(after.character.ki).toBe(ki - 2);
+    expect(after.inventory.some((i) => i.itemId === "erva")).toBe(false);
+    await expect(
+      command({ action: "exploration.return", encounterId: encounter.id, revision: 1 }),
+    ).rejects.toMatchObject({ code: "STALE_ENCOUNTER" });
+    const input = {
+      action: "exploration.return",
+      encounterId: encounter.id,
+      revision: 2,
+      idempotencyKey: randomUUID(),
+    };
+    await Promise.all([0, 1, 2].map(() => executeAction(database.db, owner, input)));
+    const banked = (await readSnapshot(database.db, owner))!;
+    expect(banked.inventory.find((i) => i.itemId === "erva")?.quantity).toBe(1);
+    expect(banked.activeExploration).toBeNull();
+  });
+  it("limita a expedição a cinco trechos e deposita a soma exata uma vez", async () => {
+    await command({ action: "exploration.start", areaId: "floresta" });
+    let snapshot = (await readSnapshot(database.db, owner))!;
+    for (let depth = 1; depth <= 5; depth++) {
+      const encounter = snapshot.activeExploration!;
+      await command({
+        action: "exploration.choose",
+        encounterId: encounter.id,
+        revision: encounter.revision,
+        choiceId: "collect",
+      });
+      snapshot = (await readSnapshot(database.db, owner))!;
+      await command({
+        action: "exploration.choose",
+        encounterId: encounter.id,
+        revision: snapshot.activeExploration!.revision,
+        choiceId: "push",
+      });
+      snapshot = (await readSnapshot(database.db, owner))!;
+      expect(snapshot.activeExploration).toMatchObject({ depth, status: "checkpoint" });
+      expect(snapshot.inventory.some((i) => i.itemId === "erva")).toBe(false);
+      if (depth < 5) {
+        await executeAction(
+          database.db,
+          owner,
+          {
+            action: "exploration.advance",
+            encounterId: encounter.id,
+            revision: snapshot.activeExploration!.revision,
+            idempotencyKey: randomUUID(),
+          },
+          { random: () => 0 },
+        );
+        snapshot = (await readSnapshot(database.db, owner))!;
+      }
+    }
+    const last = snapshot.activeExploration!;
+    await expect(
+      command({ action: "exploration.advance", encounterId: last.id, revision: last.revision }),
+    ).rejects.toMatchObject({ code: "CANNOT_ADVANCE" });
+    expect((await readSnapshot(database.db, owner))!.activeExploration).toEqual(last);
+    await command({ action: "exploration.return", encounterId: last.id, revision: last.revision });
+    const done = (await readSnapshot(database.db, owner))!;
+    expect(done.inventory.find((i) => i.itemId === "erva")?.quantity).toBe(
+      last.pending.items[0].quantity,
+    );
+    expect(done.latestExploration?.depth).toBe(5);
+    expect(done.character.xp).toBe(0);
   });
   it("perigo fatal não concede recompensas nem mantém encontro preso", async () => {
     await database.db.update(s.characters).set({ hp: 1 }).where(eq(s.characters.userId, owner));
