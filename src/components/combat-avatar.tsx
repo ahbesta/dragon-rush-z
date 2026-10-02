@@ -30,13 +30,13 @@ export function CombatAvatar({
       {sprite ? (
         <span
           className="combat-avatar-window"
-          style={{ width: `${((sprite.frameWidth ?? 160) / 200) * 40}px` }}
+          style={{ width: `${((sprite.frameWidth ?? 160) / (sprite.frameHeight ?? 200)) * 40}px` }}
         >
           <Image
             src={sprite.src}
             alt=""
             width={(sprite.frameWidth ?? 160) * (sprite.frames ?? 3)}
-            height={200}
+            height={sprite.frameHeight ?? 200}
             unoptimized
           />
         </span>

@@ -36,9 +36,12 @@ export const battleArenaArtwork: Record<string, GameArtwork> = {
 export type SpriteSheet = {
   src: string;
   alt: string;
+  /** Visible standing height relative to Goku; transparent canvas margins do not count. */
   scale: number;
   frames?: 1 | 3 | 4;
   frameWidth?: number;
+  frameHeight?: number;
+  bounds?: readonly { left: number; right: number; top: number; bottom: number }[];
 };
 export const playerBattleSprites: Readonly<Partial<Record<string, SpriteSheet>>> = {
   saiyajin: {
@@ -47,6 +50,12 @@ export const playerBattleSprites: Readonly<Partial<Record<string, SpriteSheet>>>
     scale: 1,
     frames: 4,
     frameWidth: 208,
+    bounds: [
+      { left: 55, right: 151, top: 68, bottom: 195 },
+      { left: 38, right: 174, top: 70, bottom: 195 },
+      { left: 43, right: 165, top: 68, bottom: 194 },
+      { left: 34, right: 174, top: 68, bottom: 195 },
+    ],
   },
   humano: {
     src: "/images/battle-sprites/humano-v2.webp",
@@ -54,55 +63,113 @@ export const playerBattleSprites: Readonly<Partial<Record<string, SpriteSheet>>>
     scale: 0.8,
     frames: 4,
     frameWidth: 208,
+    bounds: [
+      { left: 53, right: 154, top: 66, bottom: 193 },
+      { left: 33, right: 174, top: 65, bottom: 193 },
+      { left: 37, right: 171, top: 66, bottom: 194 },
+      { left: 28, right: 179, top: 68, bottom: 195 },
+    ],
   },
   namekuseijin: {
     src: "/images/battle-sprites/namekuseijin-v2.webp",
     alt: "Sprite Namekuseijin de Piccolo em combate",
-    scale: 1.1,
+    scale: 1.2,
     frames: 4,
     frameWidth: 208,
+    bounds: [
+      { left: 60, right: 146, top: 76, bottom: 195 },
+      { left: 40, right: 175, top: 82, bottom: 195 },
+      { left: 44, right: 162, top: 82, bottom: 194 },
+      { left: 28, right: 180, top: 77, bottom: 195 },
+    ],
   },
   majin: {
     src: "/images/battle-sprites/majin-v2.webp",
     alt: "Sprite de Majin Buu em combate",
-    scale: 1,
+    scale: 1.15,
     frames: 4,
     frameWidth: 208,
+    bounds: [
+      { left: 43, right: 159, top: 50, bottom: 179 },
+      { left: 33, right: 175, top: 60, bottom: 177 },
+      { left: 36, right: 173, top: 58, bottom: 177 },
+      { left: 7, right: 200, top: 73, bottom: 195 },
+    ],
   },
   freeza: {
     src: "/images/battle-sprites/freeza-v2.webp",
     alt: "Sprite de Freeza em combate",
-    scale: 0.9,
+    scale: 0.84,
     frames: 4,
     frameWidth: 208,
+    bounds: [
+      { left: 51, right: 158, top: 83, bottom: 195 },
+      { left: 33, right: 175, top: 85, bottom: 194 },
+      { left: 43, right: 166, top: 86, bottom: 195 },
+      { left: 22, right: 185, top: 83, bottom: 195 },
+    ],
   },
 };
 export const enemyBattleSprites: Readonly<Partial<Record<string, SpriteSheet>>> = {
-  lobo: { src: "/images/battle-sprites/lobo.webp", alt: "Sprite do Lobo em combate", scale: 0.7 },
+  lobo: {
+    src: "/images/battle-sprites/lobo.webp",
+    alt: "Sprite do Lobo em combate",
+    scale: 0.58,
+    bounds: [
+      { left: 13, right: 147, top: 101, bottom: 193 },
+      { left: 8, right: 151, top: 89, bottom: 179 },
+      { left: 15, right: 145, top: 95, bottom: 193 },
+    ],
+  },
   bandido: {
     src: "/images/battle-sprites/bandido.webp",
     alt: "Sprite do Bandido em combate",
     scale: 1,
+    bounds: [
+      { left: 27, right: 139, top: 78, bottom: 183 },
+      { left: 9, right: 149, top: 82, bottom: 183 },
+      { left: 31, right: 132, top: 87, bottom: 185 },
+    ],
   },
   dinossauro: {
     src: "/images/battle-sprites/dinossauro.webp",
     alt: "Sprite do Dinossauro em combate",
-    scale: 1.4,
+    scale: 2,
+    bounds: [
+      { left: 9, right: 146, top: 85, bottom: 195 },
+      { left: 9, right: 149, top: 85, bottom: 190 },
+      { left: 15, right: 142, top: 60, bottom: 194 },
+    ],
   },
   saibaman: {
     src: "/images/battle-sprites/saibaman.webp",
     alt: "Sprite do Saibaman em combate",
-    scale: 0.75,
+    scale: 0.65,
+    bounds: [
+      { left: 32, right: 125, top: 89, bottom: 185 },
+      { left: 10, right: 145, top: 87, bottom: 183 },
+      { left: 26, right: 135, top: 83, bottom: 182 },
+    ],
   },
   "soldado-red-ribbon": {
     src: "/images/battle-sprites/soldado-red-ribbon.webp",
     alt: "Sprite do Soldado da Red Ribbon em combate",
     scale: 1,
+    bounds: [
+      { left: 17, right: 130, top: 70, bottom: 193 },
+      { left: 23, right: 135, top: 55, bottom: 189 },
+      { left: 12, right: 143, top: 68, bottom: 189 },
+    ],
   },
   "piccolo-daimao": {
     src: "/images/battle-sprites/piccolo-daimao.webp",
     alt: "Sprite de Piccolo Daimao em combate",
-    scale: 1.2,
+    scale: 1.28,
+    bounds: [
+      { left: 26, right: 136, top: 61, bottom: 194 },
+      { left: 8, right: 152, top: 64, bottom: 194 },
+      { left: 17, right: 143, top: 66, bottom: 194 },
+    ],
   },
 };
 
@@ -246,32 +313,37 @@ export const characterArtwork = {
   piccolo: { src: "/images/characters/piccolo.webp", alt: "Piccolo", width: 440, height: 880 },
 } satisfies Record<string, GameArtwork>;
 
-const classicFighters = [
-  "yamcha",
-  "mai-shu",
-  "pilaf",
-  "prova-kame",
-  "giran",
-  "nam",
-  "jackie-chun",
-  "major-metallic",
-  "murasaki",
-  "buyon",
-  "general-white",
-  "robo-pirata",
-  "general-blue",
-  "prova-karin",
-  "tao-pai-pai",
-  "comandante-black",
-  "chaos",
-  "tenshinhan",
-  "cymbal",
-  "tambourine",
-  "drum",
-  "soldado-neve",
-  "oficial-red-ribbon",
-];
-for (const id of classicFighters) {
+// Visible standing height relative to Goku, followed by the artwork's alpha bounds.
+// Weapons, tails and wide stances retain their original proportions.
+const classicFighters: Record<
+  string,
+  readonly [scale: number, left: number, right: number, top: number, bottom: number]
+> = {
+  yamcha: [1.04, 24, 359, 68, 442],
+  "mai-shu": [0.98, 24, 359, 98, 412],
+  pilaf: [0.52, 24, 359, 64, 447],
+  "prova-kame": [0.91, 24, 359, 79, 431],
+  giran: [1.5, 24, 359, 93, 418],
+  nam: [1.04, 24, 359, 49, 462],
+  "jackie-chun": [0.91, 24, 359, 58, 453],
+  "major-metallic": [1.65, 24, 359, 49, 461],
+  murasaki: [1, 24, 359, 55, 455],
+  buyon: [1.6, 24, 359, 89, 422],
+  "general-white": [1.02, 26, 356, 32, 479],
+  "robo-pirata": [1.75, 24, 359, 52, 458],
+  "general-blue": [1.02, 33, 349, 32, 479],
+  "prova-karin": [0.53, 24, 359, 67, 443],
+  "tao-pai-pai": [1.03, 26, 356, 32, 479],
+  "comandante-black": [1.02, 24, 358, 71, 440],
+  chaos: [0.48, 24, 359, 42, 468],
+  tenshinhan: [1.1, 24, 359, 74, 437],
+  cymbal: [1.4, 24, 359, 43, 467],
+  tambourine: [1.12, 24, 358, 47, 464],
+  drum: [1.45, 24, 359, 54, 456],
+  "soldado-neve": [1, 24, 359, 71, 439],
+  "oficial-red-ribbon": [1, 24, 359, 60, 450],
+};
+for (const [id, [scale, left, right, top, bottom]] of Object.entries(classicFighters)) {
   const filename = `${id}-v2`;
   Object.assign(enemyArtwork, {
     [id]: {
@@ -285,9 +357,11 @@ for (const id of classicFighters) {
     [id]: {
       src: `/images/classic/${filename}.webp`,
       alt: `Lutador: ${id.replaceAll("-", " ")}`,
-      scale: 1,
+      scale,
       frames: 1,
-      frameWidth: 150,
+      frameWidth: 384,
+      frameHeight: 512,
+      bounds: [{ left, right, top, bottom }],
     },
   });
 }

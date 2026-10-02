@@ -27,6 +27,7 @@ import { BattleLootReveal } from "./battle-loot-reveal";
 import { useBattlePlayback } from "./use-battle-playback";
 import { BattleTimeline } from "./battle-timeline";
 import type { CombatActor, CombatAvatars } from "./combat-avatar";
+import { fighterFormation, fighterLayout } from "@/lib/fighter-layout";
 
 function FighterSprite({
   sprite,
@@ -37,23 +38,32 @@ function FighterSprite({
   pose: number;
   label: string;
 }) {
+  const layout = fighterLayout(sprite, pose);
   return (
     <span
       className="arena-sprite-window"
       data-pose={pose}
       data-frames={sprite?.frames ?? 3}
-      style={{ "--frame-width-ratio": (sprite?.frameWidth ?? 160) / 160 } as CSSProperties}
+      style={
+        {
+          "--sprite-window-width": layout.width,
+          "--sprite-window-height": layout.height,
+          "--sprite-sheet-width": layout.sheetWidth,
+          "--sprite-sheet-height": layout.sheetHeight,
+          "--sprite-sheet-left": layout.sheetLeft,
+          "--sprite-sheet-bottom": layout.sheetBottom,
+        } as CSSProperties
+      }
     >
       {sprite ? (
         <Image
           src={sprite.src}
           alt={sprite.alt}
           width={(sprite.frameWidth ?? 160) * (sprite.frames ?? 3)}
-          height={200}
+          height={sprite.frameHeight ?? 200}
           className="arena-sprite-sheet"
           style={{
-            width: `${100 * (sprite.frames ?? 3)}%`,
-            transform: `translateX(${(-100 * (sprite.frames === 1 ? 0 : pose)) / (sprite.frames ?? 3)}%)`,
+            transform: `translateX(${layout.translateX}%)`,
           }}
           sizes="(max-width: 600px) 360px, 600px"
           unoptimized
@@ -93,6 +103,7 @@ export function BattleArena({
     player: { name: playerName, sprite: playerBattleSprites[snapshot.character.raceId] },
     enemy: { name: enemyName, sprite: enemyBattleSprites[enemy?.heroicOf ?? battle.enemyId] },
   };
+  const formation = fighterFormation([fighters.player.sprite, fighters.enemy.sprite]);
   const model = useMemo(
     () =>
       presentBattleEvents(events, snapshot.catalog.techniques, {
@@ -246,6 +257,8 @@ export function BattleArena({
           {
             "--strike-duration": `${playback.duration}ms`,
             "--fx-color": techniqueFxColor[frame?.techniqueId ?? ""] ?? "#49daff",
+            "--formation-width": formation.width,
+            "--formation-height": formation.height,
           } as CSSProperties
         }
       >
@@ -262,17 +275,13 @@ export function BattleArena({
         </div>
         <div className="arena-floor-grid" />
         {(["player", "enemy"] as const).map((actor) => {
-          const sprite =
-            actor === "player"
-              ? playerBattleSprites[snapshot.character.raceId]
-              : enemyBattleSprites[enemy?.heroicOf ?? battle.enemyId];
+          const sprite = fighters[actor].sprite;
           return (
             <div className={`arena-team team-${actor}`} data-team-size={1} key={actor}>
               <div
                 className={actorClass(actor)}
                 data-highlight={highlighted === actor}
                 data-current-turn={(playback.playing ? frame?.actor : active?.initiative) === actor}
-                style={{ "--sprite-scale": sprite?.scale ?? 1 } as CSSProperties}
               >
                 <span className="arena-ground-shadow" />
                 <div className="arena-fighter-motion">

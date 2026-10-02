@@ -10,6 +10,7 @@ O combate continua sendo resolvido e salvo pelo servidor. A arena reproduz os ev
 - `src/components/battle-arena.tsx`: cenário, dois lutadores, HUD, efeitos e controles. As técnicas continuam validadas no servidor.
 - `src/app/battle-arena.css`: movimentos e efeitos responsivos, respeitando `prefers-reduced-motion`.
 - `src/lib/game-art.ts`: associação entre IDs, cenários e folhas de sprites. Não contém atributos de jogo.
+- `src/lib/fighter-layout.ts`: proporções visuais, recorte das margens transparentes, alinhamento dos pés e dimensões da formação.
 
 As opções 1x/2x/3x, pular e rever alteram somente a apresentação. Elas não enviam ações de jogo, aceleram cooldowns ou repetem recompensas. A velocidade fica em `localStorage`, com validação e fallback para 1x caso o armazenamento esteja indisponível. Enquanto uma rodada manual está sendo animada, os comandos aguardam o fim da reprodução; é possível pular a animação ou trocar de modo.
 
@@ -19,7 +20,7 @@ As opções 1x/2x/3x, pular e rever alteram somente a apresentação. Elas não 
 
 `combat-timeline.ts` apresenta a iniciativa publicada pelo servidor enquanto aguarda uma escolha, ou a sequência real dos eventos durante a reprodução. Não prevê rodadas futuras. O painel fica integrado no canto direito da HUD e permite consultar movimentos recentes. Avatares na ordem de turnos e no histórico destacam o combatente correspondente por mouse, teclado ou toque.
 
-Os contêineres `.arena-team` reservam metade do campo para cada equipe, preservando as âncoras e tamanhos atuais quando há um combatente. Formações visuais usam células separadas e mais altura em telas estreitas; `--formation-rows` dimensiona as linhas e a altura para quantidades maiores sem trocar a estrutura. O motor continua sendo 1 × 1. Indicadores de turno ficam sob os pés e nas etiquetas. Golpes, flashes vermelhos e explosões de Ki são efeitos visuais dos eventos existentes, respeitando movimento reduzido.
+Os contêineres `.arena-team` reservam metade do campo para cada equipe, preservando as âncoras atuais quando há um combatente. Formações visuais usam células separadas e mais altura em telas estreitas; `--formation-rows` dimensiona as linhas e a altura para quantidades maiores sem trocar a estrutura. O limite de tamanho considera o espaço de cada célula, inclusive para criaturas grandes. O motor continua sendo 1 × 1. Indicadores de turno ficam sob os pés e nas etiquetas. Golpes, flashes vermelhos e explosões de Ki são efeitos visuais dos eventos existentes, respeitando movimento reduzido.
 
 `battle-navigation-notice.tsx` usa um diálogo nativo com foco contido e Escape. `GameShell` impede trocar de seção, abrir Perfil ou sair da conta enquanto houver `activeBattle`. Fechar o aviso devolve o foco à arena sem rolar a página. Recarregar ou receber uma luta pendente em outra aba retoma a seção de combate. A confirmação de conclusão libera o menu.
 
@@ -63,6 +64,14 @@ As cinco artes originais usadas de poções, armaduras e Sementes dos Deuses for
 
 Os 23 retratos de combatentes clássicos usam versões `classic/*-v2.webp` de 384 × 512, com corpo inteiro e margem transparente. Kame reaproveita o original completo; 14 figuras com partes ausentes ou fragmentos vizinhos foram reparadas com **imagegen integrado**. As instruções estão em [fighter-art-repair-prompts.json](fighter-art-repair-prompts.json). Os mesmos cenários clássicos receberam apenas remoção de margens transparentes, sem redesenho ou substituição do conteúdo.
 
+### Proporções e chão da arena
+
+`SpriteSheet.scale` representa a altura visível em guarda em relação a Goku, cuja referência é 1. Chaos, Pilaf, Karin e Kuririn são menores; Piccolo e Tenshinhan são mais altos; Metallic, Robô Pirata, Buyon e Dinossauro têm porte maior. A escala não usa nível, HP ou Power Level. Variantes que reutilizam a arte também reutilizam essas proporções.
+
+Cada sprite informa as dimensões reais de um quadro e os limites de alfa de cada pose em `game-art.ts`. `fighter-layout.ts` desconta as margens transparentes da comparação de altura, conserva a mesma escala horizontal e vertical e posiciona a última linha visível dos pés na base da janela. A janela reserva a largura e altura necessárias para todas as poses; a troca de quadro não altera o tamanho do personagem. As imagens existentes permanecem intactas.
+
+A unidade de câmera é compartilhada pelos dois lados e limitada pela figura mais larga/alta, incluindo poses de ataque. Em telas estreitas ou formações maiores, o conjunto é reduzido proporcionalmente: um gigante não encolhe sozinho até ficar do tamanho de Goku. Para adicionar uma arte, informar `scale`, `frameWidth`, `frameHeight`, `frames` e `bounds` medidos no arquivo final; os avatares da HUD continuam com tamanho uniforme de ícone.
+
 ## Verificação
 
 O inventário, a lista de recompensas e a revelação de drops usam `item-presentation.ts` para exibir épicos, raros, incomuns e comuns nessa ordem. Itens da mesma raridade mantêm a ordem original. A ordenação trabalha sobre uma cópia, sem alterar recompensas, quantidades ou o estado persistido.
@@ -74,3 +83,5 @@ O inventário, a lista de recompensas e a revelação de drops usam `item-presen
 O teste de fluxo também confere o centro do item em relação ao círculo. O teste de rolagem cobre **Batalhar** e **Explorar**, com início manual, conclusão, combate automático e repetição da exploração sem voltar ao menu. `classic-content.spec.ts` verifica o carregamento dos ícones do inventário e o retrato corrigido de Pilaf em uma batalha real, com revisão em 320, 390 e 1440 pixels.
 
 `turn-menu.spec.ts` verifica comandos, poção consumida uma única vez, recarga, defesa, foco, avatares, bloqueio de navegação no desktop/celular, velocidade após reload, primeira vitória e farm automático de boss. Formações com dois/três/cinco combatentes por lado e os 23 retratos usam fixtures exclusivamente visuais, sem alterar o motor nem o progresso. Os testes transacionais e de preferências conferem o desbloqueio pelo ID exato e a compatibilidade dos estados antigos.
+
+`fighter-layout.test.ts` lê todos os arquivos e verifica proporção, poses completas e chão comum. `fighter-proportions.spec.ts` compara as alturas reais no navegador, alinhamento dos pés, proporção natural das imagens e enquadramento de todas as raças/adversários em 320, 390, 768 e 1440 pixels. Também reserva formações de dois/três/cinco combatentes com criaturas grandes; as fixtures visuais não concedem vitórias nem alteram o personagem persistido.

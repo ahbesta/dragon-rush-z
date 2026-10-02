@@ -169,6 +169,13 @@
   background: linear-gradient(0deg, #09192944, transparent);
 }
 .arena-fighter {
+  --fighter-room: calc(44cqw - 12px);
+  --fighter-height-limit: 260px;
+  --fighter-unit: min(
+    clamp(128px, 20cqw, 220px),
+    calc(var(--fighter-room) / var(--formation-width, 1)),
+    calc(var(--fighter-height-limit) / var(--formation-height, 1))
+  );
   position: absolute;
   bottom: 16%;
   left: 22%;
@@ -190,15 +197,18 @@
   transform: scaleX(1.12);
 }
 .arena-sprite-window {
-  width: calc(clamp(102px, 16cqw, 176px) * var(--sprite-scale) * var(--frame-width-ratio, 1));
-  height: calc(clamp(128px, 20cqw, 220px) * var(--sprite-scale));
+  width: calc(var(--fighter-unit) * var(--sprite-window-width));
+  height: calc(var(--fighter-unit) * var(--sprite-window-height));
   display: block;
   position: relative;
   overflow: hidden;
 }
 .arena-sprite-sheet {
-  width: 300%;
-  height: 100%;
+  position: absolute;
+  width: calc(var(--fighter-unit) * var(--sprite-sheet-width));
+  height: calc(var(--fighter-unit) * var(--sprite-sheet-height));
+  left: calc(var(--fighter-unit) * var(--sprite-sheet-left));
+  bottom: calc(var(--fighter-unit) * var(--sprite-sheet-bottom));
   max-width: none;
   display: block;
   image-rendering: pixelated;
@@ -206,7 +216,6 @@
   transform: translateX(0);
 }
 .arena-sprite-window[data-frames="1"] .arena-sprite-sheet {
-  object-fit: contain;
   image-rendering: auto;
 }
 .arena-fighter-motion {
@@ -2352,4 +2361,13 @@ body:has(.battle-navigation-notice[open]) {
 
 .battle-stage:has(.arena-team[data-team-size]:not([data-team-size="1"])) {
   min-height: calc(var(--formation-rows, 3) * 248px + 80px);
+}
+.battle-stage:has(.arena-team[data-team-size]:not([data-team-size="1"])) .arena-fighter {
+  --fighter-height-limit: 196px;
+  --fighter-room: calc(50cqw - 16px);
+}
+@container (min-width: 761px) {
+  .battle-stage:has(.arena-team[data-team-size]:not([data-team-size="1"])) .arena-fighter {
+    --fighter-room: calc(25cqw - 30px);
+  }
 }
