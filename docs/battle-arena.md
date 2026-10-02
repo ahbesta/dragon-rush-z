@@ -65,6 +65,8 @@ Os 23 retratos de combatentes clássicos usam versões `classic/*-v2.webp` de 38
 
 ## Verificação
 
+O inventário, a lista de recompensas e a revelação de drops usam `item-presentation.ts` para exibir épicos, raros, incomuns e comuns nessa ordem. Itens da mesma raridade mantêm a ordem original. A ordenação trabalha sobre uma cópia, sem alterar recompensas, quantidades ou o estado persistido.
+
 `tests/battle-presentation.test.ts` verifica projeção de dano e Ki, regeneração, máximos originais, fase, resultado, compatibilidade com logs antigos e metadados emitidos pelo motor. `tests/e2e/battle-arena.spec.ts` verifica o combate real em conta descartável, carregamento e enquadramento, poses de chute/Ki, troca de modo, replay sem mutações e movimento reduzido. As imagens de revisão ficam em `.local/screenshots`, sem entrar no Git.
 
 `battle-flow.spec.ts` verifica o seletor, busca, áreas bloqueadas, chegada à arena, quatro raridades, enquadramento mobile, log integrado, Escape e replay de drops sem mutar inventário. As quatro raridades usam respostas visuais fixas exclusivas do teste, enquanto a batalha real e seus drops persistidos continuam calculados pelo servidor. `battle-scroll.spec.ts` verifica separadamente o início com rolagem à arena e a conclusão sem mudança de posição. A fixture comum `browser-test.ts` aguarda o limite real de cadastro quando várias contas descartáveis compartilham o mesmo IP; não desativa limites nem apaga os contadores de autenticação.

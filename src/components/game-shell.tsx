@@ -59,6 +59,7 @@ import { RankingPanel } from "./ranking-panel";
 import { PreparationPanel } from "./preparation-panel";
 import { HeroicPanel } from "./enemy-intel";
 import { BattleNavigationNotice } from "./battle-navigation-notice";
+import { sortItemsByRarity } from "@/lib/item-presentation";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -899,7 +900,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 </section>
               ) : (
                 <div className="inventory-grid">
-                  {snapshot.inventory.map((owned) => {
+                  {sortItemsByRarity(snapshot.inventory, catalog.items).map((owned) => {
                     const item = catalog.items.find((i) => i.id === owned.itemId)!;
                     const equipped = Object.values(c.equipment).includes(item.id);
                     const reasons = requirements(item.requirements);

@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Check, LoaderCircle, X } from "lucide-react";
 import type { BattleResult, ItemDefinition, Rarity } from "@/game/types";
 import { ItemIcon } from "./game-primitives";
+import { sortItemsByRarity } from "@/lib/item-presentation";
 
 export const rarityNames: Record<Rarity, string> = {
   common: "COMUM",
@@ -24,7 +25,8 @@ export function BattleLootReveal({
   const [index, setIndex] = useState<number | null>(0);
   const [readyFor, setReadyFor] = useState<string | null>(null);
   const art = useRef<HTMLDivElement>(null);
-  const drop = index === null ? undefined : battle.drops[index];
+  const drops = useMemo(() => sortItemsByRarity(battle.drops, items), [battle.drops, items]);
+  const drop = index === null ? undefined : drops[index];
   const item = items.find((i) => i.id === drop?.itemId);
   const revealKey = `${battle.id}-${index}`;
   const artReady = readyFor === revealKey;

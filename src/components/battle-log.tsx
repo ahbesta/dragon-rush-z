@@ -6,6 +6,7 @@ import { formatNumber, ItemIcon } from "./game-primitives";
 import { rarityNames } from "./battle-loot-reveal";
 import { EnemyPortrait } from "./enemy-portrait";
 import { CombatAvatar, type CombatActor, type CombatAvatars } from "./combat-avatar";
+import { sortItemsByRarity } from "@/lib/item-presentation";
 type HighlightProps = {
   fighters?: CombatAvatars;
   onHighlight?: (actor: CombatActor | null) => void;
@@ -51,7 +52,7 @@ export function BattleLog({
             <Zap size={15} /> +{formatNumber(battle.xp)} XP
           </span>
           <span className="zeni-color">◈ +{formatNumber(battle.zeni)} Zeni</span>
-          {battle.drops.map((drop) => (
+          {sortItemsByRarity(battle.drops, snapshot.catalog.items).map((drop) => (
             <span
               className={`battle-reward-item rarity-${snapshot.catalog.items.find((i) => i.id === drop.itemId)?.rarity ?? "common"}`}
               key={drop.itemId}

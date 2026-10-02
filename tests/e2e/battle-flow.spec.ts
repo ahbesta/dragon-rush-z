@@ -90,7 +90,7 @@ for (const width of [390, 1440])
       await page.getByRole("button", { name: "Trocar área", exact: true }).click();
       await dialog.getByRole("button", { name: /Floresta do Monte Paozu/ }).click();
       // Fixed visual fixtures cover every rarity; the real server still grants its own rolled inventory.
-      const expectedItems = (["common", "uncommon", "rare", "epic"] as const).map((rarity) =>
+      const expectedItems = (["epic", "rare", "uncommon", "common"] as const).map((rarity) =>
         initial.catalog.items.find((item) => item.rarity === rarity)!,
       );
       const artworkGate = new Promise<void>((resolve) => {
@@ -109,7 +109,7 @@ for (const width of [390, 1440])
         const response = await route.fetch();
         const data = await response.json();
         if (route.request().postDataJSON().action === "battle" && data.snapshot?.latestBattle) {
-          data.snapshot.latestBattle.drops = expectedItems.map((item) => ({
+          data.snapshot.latestBattle.drops = [...expectedItems].reverse().map((item) => ({
             itemId: item.id,
             quantity: 2,
           }));
@@ -139,7 +139,7 @@ for (const width of [390, 1440])
         await arena.getByRole("button", { name: "Pular animação", exact: true }).click();
       const firstReveal = arena.locator(".arena-loot-reveal");
       await expect(firstReveal.locator(".arena-loot-art")).toHaveAttribute("data-ready", "false");
-      await page.waitForTimeout(2800); // Longer than the common drop's normal display duration.
+      await page.waitForTimeout(4000); // Longer than the epic drop's normal display duration.
       await expect(firstReveal).toHaveAttribute("data-item-id", expectedItems[0].id);
       releaseArtwork();
       const before = await state();
@@ -186,10 +186,14 @@ for (const width of [390, 1440])
           .click();
       }
       await expect(arena.locator(".arena-loot-reveal")).toHaveCount(0);
+      const rewards = arena.locator(".battle-reward-item");
+      for (const [index, item] of expectedItems.entries()) {
+        await expect(rewards.nth(index)).toContainText(item.name);
+      }
       await expect(arena.locator(".battle-result .combat-log")).toBeVisible();
       expect(await page.locator(".battle-result").count()).toBe(1);
       await arena.getByRole("button", { name: "Ver drops", exact: true }).click();
-      await expect(arena.locator(".arena-loot-reveal")).toHaveAttribute("data-rarity", "common");
+      await expect(arena.locator(".arena-loot-reveal")).toHaveAttribute("data-rarity", "epic");
       await page.keyboard.press("Escape");
       await expect(arena.locator(".arena-loot-reveal")).toHaveCount(0);
       await page.emulateMedia({ reducedMotion: "reduce" });
@@ -203,6 +207,19 @@ for (const width of [390, 1440])
       const after = await state();
       expect(after.inventory).toEqual(before.inventory);
       expect(after.character.xp).toBe(before.character.xp);
+      await page.keyboard.press("Escape");
+      // Presentation-only inventory fixture arrives in the opposite order to the requested UI.
+      presented!.inventory = [...expectedItems]
+        .reverse()
+        .map((item) => ({ itemId: item.id, quantity: 2 }));
+      await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+      if (await page.getByRole("button", { name: "Abrir menu", exact: true }).isVisible())
+        await page.getByRole("button", { name: "Abrir menu", exact: true }).click();
+      await page.getByRole("button", { name: "Inventário", exact: true }).click();
+      await expect(page.locator(".inventory-grid h3")).toHaveText(
+        expectedItems.map((item) => item.name),
+      );
+      expect((await state()).inventory).toEqual(before.inventory);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
