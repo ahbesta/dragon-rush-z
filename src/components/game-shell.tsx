@@ -11,7 +11,6 @@ import {
   CircleHelp,
   Clock3,
   Compass,
-  Crosshair,
   Dumbbell,
   Flame,
   Heart,
@@ -32,18 +31,11 @@ import {
   Zap,
 } from "lucide-react";
 import type { ActionPayload } from "@/game/validation";
-import type { Attributes, GameSnapshot, Requirements } from "@/game/types";
+import type { GameSnapshot, Requirements } from "@/game/types";
 import { unmetRequirements } from "@/game/requirements";
 import { authClient } from "@/lib/auth-client";
 import { Brand, DragonBall, RaceEmblem } from "./brand";
-import {
-  attributeIcons,
-  attributeLabels,
-  formatNumber as n,
-  ItemEffects,
-  ItemIcon,
-  Meter,
-} from "./game-primitives";
+import { formatNumber as n, ItemEffects, ItemIcon, Meter } from "./game-primitives";
 import { BattleDestinations } from "./battle-destinations";
 import { CombatModeSelector } from "./combat-controls";
 import { BattleArena } from "./battle-arena";
@@ -60,6 +52,10 @@ import { PreparationPanel } from "./preparation-panel";
 import { HeroicPanel } from "./enemy-intel";
 import { BattleNavigationNotice } from "./battle-navigation-notice";
 import { sortItemsByRarity } from "@/lib/item-presentation";
+import { FighterAttributes } from "./fighter-attributes";
+import { QuestCompletionNotice } from "./quest-completion-notice";
+import { ActivityCompletionNotice } from "./activity-completion-notice";
+import { readyQuests } from "@/lib/quest-presentation";
 
 const sections = [
   { id: "character", label: "Personagem", icon: UserRound },
@@ -84,6 +80,14 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const [snapshot, setSnapshot] = useState(initial);
   const [animatedBattleId, setAnimatedBattleId] = useState<string | null>(null);
   const [lootRevealId, setLootRevealId] = useState<string | null>(null);
+  const [pendingQuestIds, setPendingQuestIds] = useState<string[]>([]);
+  const [focusedQuestIds, setFocusedQuestIds] = useState<string[]>([]);
+  const announcedQuests = useRef(new Set(readyQuests(initial).map((quest) => quest.id)));
+  const [pendingPresentationId, setPendingPresentationId] = useState<string | null>(null);
+  const presentationComplete = useCallback((id: string) => {
+    setPendingPresentationId((pending) => (pending === id ? null : pending));
+  }, []);
+  const [dismissedActivityId, setDismissedActivityId] = useState<string | null>(null);
   const [arenaArrivalId, setArenaArrivalId] = useState<string | null>(null);
   const [retainedPageHeight, setRetainedPageHeight] = useState<number | undefined>();
   const arenaAnchor = useRef<HTMLDivElement>(null);
@@ -126,6 +130,17 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     });
   }, [arenaArrivalId]);
   const adopt = useCallback((next: GameSnapshot) => {
+    const availableQuests = readyQuests(next);
+    const newlyReady = availableQuests.filter((quest) => !announcedQuests.current.has(quest.id));
+    newlyReady.forEach((quest) => announcedQuests.current.add(quest.id));
+    setFocusedQuestIds((current) => {
+      const remaining = current.filter((id) => availableQuests.some((quest) => quest.id === id));
+      return remaining.length === current.length ? current : remaining;
+    });
+    if (newlyReady.length)
+      setPendingQuestIds((pending) => [
+        ...new Set([...pending, ...newlyReady.map((quest) => quest.id)]),
+      ]);
     setTime({ server: new Date(next.serverTime).getTime(), client: Date.now() });
     setSnapshot(next);
     if (next.activeBattle) {
@@ -217,6 +232,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
         ) {
           setAnimatedBattleId(data.snapshot.latestBattle.id);
           setLootRevealId(data.snapshot.latestBattle.id);
+          setPendingPresentationId(data.snapshot.latestBattle.id);
         }
         adopt(data.snapshot);
         if (
@@ -253,6 +269,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
     }
   }
   const { character: c, stats, catalog, activity } = snapshot;
+  const completedQuests = readyQuests(snapshot).filter((quest) =>
+    pendingQuestIds.includes(quest.id),
+  );
+  const canShowCompletion =
+    !snapshot.activeBattle &&
+    !blockedDestination &&
+    (!pendingPresentationId || (section !== "battle" && section !== "explore"));
   const currentChapter =
     catalog.chapters.find((ch) => !c.flags.includes(`quest:${ch.finaleQuestId}`)) ??
     catalog.chapters.at(-1);
@@ -282,6 +305,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
       return;
     }
     setSection(next);
+    if (next !== "quests") setFocusedQuestIds([]);
     setMobileOpen(false);
     if (scrollToTop) {
       setRetainedPageHeight(undefined);
@@ -486,6 +510,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                 }
                 onAutoplayConsumed={consumedAnimation}
                 revealLoot={lootRevealId === snapshot.latestBattle?.id}
+                onPresentationComplete={presentationComplete}
               />
             </div>
           )}
@@ -638,34 +663,12 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   onAction={act}
                   onVillage={() => go("settlements")}
                 />
-                <section className="panel attributes-panel">
-                  <div className="section-title">
-                    <h3>
-                      <Crosshair size={18} /> Atributos
-                    </h3>
-                    <span className="muted">BASE + EQUIPAMENTO</span>
-                  </div>
-                  <div className="attribute-grid">
-                    {(Object.keys(attributeLabels) as (keyof Attributes)[]).map((key) => {
-                      const Icon = attributeIcons[key];
-                      const bonus = (stats[key] ?? 0) - (c.base[key] ?? 0);
-                      return (
-                        <div className="attribute" key={key}>
-                          <Icon size={20} />
-                          <span>{attributeLabels[key]}</span>
-                          <strong>{stats[key]}</strong>
-                          <small>
-                            {bonus ? (
-                              <span className="green-text">+{bonus} equipamento</span>
-                            ) : (
-                              `Afinidade ×${snapshot.race.affinities?.[key] ?? 1}`
-                            )}
-                          </small>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
+                <FighterAttributes
+                  race={snapshot.race}
+                  attributes={stats}
+                  base={c.base}
+                  stats={stats}
+                />
                 <section className="panel equipment-panel">
                   <div className="section-title">
                     <h3>
@@ -1186,6 +1189,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           {section === "quests" && (
             <AdventurePanel
               snapshot={snapshot}
+              focusedQuestIds={focusedQuestIds}
               busy={blocked || battleWait > 0}
               onAction={act}
               onArea={(id) => {
@@ -1228,6 +1232,32 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           }}
         />
       )}
+      {canShowCompletion && !busy && completedQuests.length > 0 && (
+        <QuestCompletionNotice
+          quests={completedQuests}
+          items={catalog.items}
+          onClose={() => setPendingQuestIds([])}
+          onRewards={() => {
+            setFocusedQuestIds(completedQuests.map((quest) => quest.id));
+            setPendingQuestIds([]);
+            go("quests");
+          }}
+        />
+      )}
+      {canShowCompletion &&
+        completedQuests.length === 0 &&
+        activity &&
+        remaining === 0 &&
+        section !== "training" &&
+        dismissedActivityId !== activity.id && (
+          <ActivityCompletionNotice
+            kind={activity.kind}
+            busy={busy}
+            error={notice?.error ? notice.text : undefined}
+            onClose={() => setDismissedActivityId(activity.id)}
+            onConclude={() => act({ action: "activity.finish", activityId: activity.id })}
+          />
+        )}
     </div>
   );
 }

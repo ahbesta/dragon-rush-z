@@ -1,0 +1,737 @@
+/* Scouter readings and progression feedback share the game's HUD, not its navigation. */
+.origin-dossier {
+  margin-top: 24px;
+}
+.origin-description {
+  padding: 4px 4px 20px;
+}
+.origin-description h2 {
+  margin: 7px 0;
+  font: 800 30px var(--font-display);
+}
+.origin-description p {
+  max-width: 760px;
+  color: #aebfd5;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.fighter-attributes {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  min-width: 0;
+  color: #edf6ff;
+  background: radial-gradient(ellipse at 0 40%, #17474950, transparent 60%), #0d192b;
+  border: 1px solid #355265;
+  border-top: 3px solid #63e3b4;
+  border-radius: 12px;
+  box-shadow:
+    0 12px 28px #0003,
+    inset 0 1px #ffffff09;
+}
+.fighter-attributes-header,
+.warrior-build-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+}
+.fighter-attributes-header {
+  border-bottom: 1px solid #36516680;
+  background: linear-gradient(110deg, #20385050, #0e1a2c);
+}
+.fighter-attributes-header .eyebrow {
+  font-size: 10px;
+  color: #81c9bc;
+  letter-spacing: 1.5px;
+}
+.fighter-attributes-header h3,
+.warrior-build-heading h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 0;
+  font: 800 28px var(--font-display);
+  text-transform: uppercase;
+}
+.fighter-attributes-header h3 svg {
+  color: #74efc2;
+}
+.fighter-scouter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid #53796c;
+  background: #122e28;
+  font: 700 15px var(--font-display);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.fighter-scouter-tag i {
+  width: 6px;
+  height: 6px;
+  background: var(--origin-color, #78edb6);
+  box-shadow: 0 0 10px var(--origin-color, #78edb6);
+  border-radius: 50%;
+}
+.fighter-attributes-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.5fr);
+}
+.fighter-scouter {
+  padding: 24px 18px;
+  align-content: center;
+  text-align: center;
+  position: relative;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    #3fa08006 3px,
+    #3fa08006 4px
+  );
+  border-right: 1px solid #335164;
+}
+.fighter-power-reading > span {
+  display: block;
+  color: #88b7a9;
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+.fighter-power-reading > strong {
+  display: block;
+  font: 800 52px/1.1 var(--font-display);
+  color: #a9ffd1;
+  text-shadow: 0 0 24px #54ec9d40;
+  font-variant-numeric: tabular-nums;
+  margin: 5px 0;
+}
+.fighter-power-reading > small {
+  display: block;
+  color: #92aabd;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.fighter-scouter > svg {
+  display: block;
+  width: min(100%, 220px);
+  margin: 4px auto;
+  overflow: visible;
+}
+.scouter-grid {
+  fill: none;
+  stroke: #4f827660;
+  stroke-width: 1;
+}
+.scouter-axis {
+  stroke: #4f827640;
+}
+.scouter-profile {
+  fill: #55eab43b;
+  stroke: #8ef4c2;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.fighter-scouter text {
+  fill: #c4e9dc;
+  font: 700 11px var(--font-display);
+  letter-spacing: 1px;
+}
+.fighter-resource-readings {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.fighter-resource-readings > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #a2bdc8;
+}
+.fighter-resource-readings strong {
+  color: #edf5ff;
+  font: 700 18px var(--font-display);
+}
+.fighter-resource-readings svg {
+  color: #f68181;
+}
+.fighter-resource-readings > span:last-child svg {
+  color: #62bfff;
+}
+.fighter-profile-caption {
+  display: block;
+  font-size: 9px;
+  color: #78958e;
+  margin-top: 13px;
+}
+.fighter-attribute-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px;
+}
+.fighter-attribute-card {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  padding: 15px 14px 11px;
+  background: linear-gradient(120deg, #1b2b43, #111e31);
+  border: 1px solid #33455e;
+  border-radius: 7px;
+  min-width: 0;
+}
+.fighter-attribute-card:last-child {
+  grid-column: 1 / -1;
+}
+.fighter-attribute-icon,
+.build-attribute-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 42px;
+  background: #213a54;
+  border: 1px solid #496583;
+  color: #81c7f9;
+  border-radius: 6px 6px 12px 6px;
+}
+.fighter-attribute-code {
+  display: block;
+  font-size: 8px;
+  color: #7792b1;
+  letter-spacing: 1px;
+}
+.fighter-attribute-copy h4 {
+  margin: 4px 0;
+  font: 700 21px/1 var(--font-display);
+}
+.fighter-attribute-copy p {
+  margin: 6px 0;
+  color: #96acc5;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.fighter-attribute-value {
+  text-align: right;
+}
+.fighter-attribute-value > strong {
+  color: #fff1c3;
+  font: 800 35px/1 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.fighter-attribute-value > small {
+  display: block;
+  color: #94a9c3;
+  font-size: 9px;
+  margin-top: 7px;
+  max-width: 105px;
+  line-height: 1.5;
+}
+.fighter-attribute-value > small span {
+  display: block;
+  color: #84e6b2;
+}
+.fighter-affinity {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  color: #a1b2c8;
+  border-top: 1px solid #40506a60;
+  padding-top: 8px;
+}
+.fighter-affinity b {
+  color: #eef5ff;
+  margin-left: 4px;
+}
+.fighter-affinity small {
+  margin-left: 7px;
+  font-size: 8px;
+  color: #ffcf77;
+  letter-spacing: 0.6px;
+}
+.affinity-specialty {
+  border-color: #b48c4f80;
+  background: linear-gradient(130deg, #40342650, #192a40);
+}
+.affinity-specialty .fighter-attribute-icon {
+  color: #ffd077;
+  background: #9b6b2225;
+  border-color: #a78045;
+}
+.fighter-attributes-footnote {
+  color: #91a8bf;
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 13px 24px;
+  border-top: 1px solid #355265;
+  background: #102036;
+}
+.warrior-build {
+  padding: 0 24px 24px;
+  background: radial-gradient(ellipse at 95% 0, #a15e1820, transparent 65%), #111e31;
+  border-color: #4c5265;
+  border-top: 3px solid #ffbd56;
+  box-shadow: 0 12px 28px #0003;
+}
+.warrior-build-heading {
+  padding: 23px 0 15px;
+}
+.warrior-build-heading .eyebrow {
+  color: #f5b660;
+  font-size: 10px;
+  letter-spacing: 1.3px;
+}
+.warrior-build-heading h3 svg {
+  color: #ffb950;
+}
+.warrior-point-budget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  background: linear-gradient(120deg, #663815, #33251a);
+  border: 1px solid #b37b39;
+  border-radius: 6px;
+  box-shadow: inset 0 0 20px #ffb5360d;
+}
+.warrior-point-budget > strong {
+  font: 800 42px/1 var(--font-display);
+  color: #ffdb84;
+}
+.warrior-point-budget > span {
+  font: 700 11px/1.3 var(--font-display);
+  color: #ffe2b3;
+  letter-spacing: 1px;
+}
+.warrior-build > p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+  max-width: 740px;
+}
+.warrior-build .rpg-build-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 9px;
+  background: linear-gradient(115deg, #1d2e47, #122037);
+  border-color: #3b4d68;
+  padding: 15px;
+  position: relative;
+}
+.warrior-build .rpg-build-row > div:nth-child(2) > strong {
+  font: 700 23px var(--font-display);
+}
+.warrior-build .rpg-build-row small {
+  font-size: 10px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.warrior-build .rpg-build-row .build-affinity {
+  color: #f2c478;
+}
+.warrior-build .rpg-stat-preview {
+  font: 800 34px var(--font-display);
+  text-align: right;
+}
+.warrior-build .rpg-stat-preview span {
+  display: block;
+  font: 700 20px var(--font-display);
+}
+.warrior-build .rpg-stepper {
+  grid-column: 2 / -1;
+  justify-content: end;
+  border-top: 1px solid #3b4d6880;
+  padding-top: 10px;
+  gap: 14px;
+}
+.warrior-build .rpg-stepper::before {
+  content: "INVESTIR PONTOS";
+  margin-right: auto;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #859bb8;
+}
+.warrior-build .rpg-stepper button {
+  width: 38px;
+  height: 36px;
+  border-color: #7890af;
+  background: #263c59;
+}
+.warrior-build .rpg-stepper button:last-child {
+  color: #ffdd85;
+  border-color: #a4773b;
+  background: #4e361e;
+}
+.warrior-build .rpg-stepper button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.warrior-build .rpg-stepper span {
+  font: 800 21px var(--font-display);
+  min-width: 20px;
+}
+.warrior-build-preview {
+  align-items: center;
+  background: #0b1a2b;
+  border: 1px solid #40536b;
+  border-left: 3px solid #ffc260;
+  border-radius: 5px;
+  padding: 16px;
+}
+.warrior-build-preview > small {
+  color: #93a7bf;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.warrior-build-preview strong {
+  font: 800 25px var(--font-display);
+  color: #ffdc94;
+}
+.warrior-build-preview > span {
+  font-size: 12px;
+}
+.dashboard-middle > .equipment-panel {
+  grid-column: 1 / -1;
+}
+.dashboard-middle > .equipment-panel .equipment-slots {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.quest-completion {
+  padding: 30px;
+  width: min(480px, calc(100vw - 28px));
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  color: #f5f7fc;
+  border: 1px solid #b68b48;
+  border-top: 4px solid #ffce6f;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 0, #83582550, transparent 55%),
+    linear-gradient(150deg, #182a43, #0a1424);
+  box-shadow:
+    0 30px 100px #000a,
+    0 0 40px #ffc45612;
+  text-align: center;
+}
+.quest-completion::backdrop {
+  background: #020710bd;
+  backdrop-filter: blur(5px);
+}
+.quest-completion-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #8a9bab50;
+  border-radius: 50%;
+  background: #182337;
+  color: #d8e1ed;
+  cursor: pointer;
+}
+.quest-completion-emblem {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+}
+.quest-completion-ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid #ffc15670;
+  border-radius: 50%;
+  box-shadow: 0 0 35px #ffbd5425;
+}
+.quest-completion-emblem > .dragon-ball {
+  width: 66px;
+  height: 66px;
+  filter: drop-shadow(0 0 16px #ffb63855);
+}
+.quest-completion-emblem > svg {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 5px;
+  box-sizing: content-box;
+  color: #071d14;
+  background: #8becb4;
+  border: 3px solid #132439;
+  border-radius: 50%;
+}
+.quest-completion > .eyebrow {
+  color: #ffcd83;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+}
+.quest-completion h2 {
+  margin: 7px 0 11px;
+  color: #ffda85;
+  font: 800 44px/1 var(--font-display);
+  text-transform: uppercase;
+  text-shadow: 2px 3px #0004;
+}
+.quest-completion > p {
+  color: #b6c8df;
+  font-size: 13px;
+  line-height: 1.7;
+  margin-bottom: 22px;
+}
+.quest-completion-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 22px;
+  text-align: left;
+}
+.quest-completion-list > article {
+  padding: 17px;
+  background: #0b182b;
+  border: 1px solid #47566e;
+  border-left: 3px solid #ffbf59;
+  border-radius: 6px;
+}
+.quest-completion-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #ffc76a;
+}
+.quest-completion-name h3 {
+  margin: 0;
+  color: #eff5ff;
+  font: 700 23px var(--font-display);
+}
+.quest-reward-label {
+  display: block;
+  font-size: 8px;
+  color: #8399b4;
+  letter-spacing: 0.8px;
+  margin-top: 12px;
+}
+.quest-completion-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 10px;
+}
+.quest-completion-rewards span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 22px var(--font-display);
+  color: #ffdc89;
+}
+.quest-completion-rewards span:first-child {
+  color: #99e8b8;
+}
+.quest-completion-item {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-top: 10px;
+  color: #c3d4e9;
+  font-size: 12px;
+}
+.quest-completion-item .item-icon {
+  width: 34px;
+  height: 34px;
+}
+.quest-completion .quest-completion-cta {
+  width: 100%;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  font-size: 19px;
+}
+.quest-completion-later {
+  margin-top: 15px;
+  padding: 7px;
+  background: none;
+  border: none;
+  color: #a1b3cc;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1.5;
+}
+.quest-completion-later:hover {
+  color: #edf5ff;
+}
+.rpg-quest.reward-ready {
+  border-color: #dca952;
+  box-shadow:
+    inset 3px 0 #ffc969,
+    0 0 24px #ffb83e0c;
+  background: linear-gradient(135deg, #78532620, #111e32);
+}
+.rpg-quest.reward-ready .badge {
+  color: #ffd890;
+  background: #71502340;
+  border-color: #a5814580;
+}
+.activity-completion-emblem > svg {
+  position: static;
+  color: #ffdc87;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
+.activity-completion-emblem > .dragon-ball {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 30px;
+  height: 30px;
+}
+.activity-completion-result {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  padding: 18px;
+  margin-bottom: 22px;
+  border: 1px solid #486f72;
+  background: #18312e60;
+  border-radius: 7px;
+  color: #a3e5be;
+  font: 700 21px var(--font-display);
+}
+.activity-completion-result small {
+  display: block;
+  font: 400 11px/1.5 var(--font-sans);
+  color: #a6bbc5;
+  margin-top: 5px;
+}
+.quest-completion button:focus-visible,
+.warrior-build button:focus-visible {
+  outline: 2px solid #ffdc87;
+  outline-offset: 4px;
+}
+@media (max-width: 850px) {
+  .fighter-attributes-body {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .fighter-attribute-cards {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 15px;
+  }
+  .fighter-attribute-card:last-child {
+    grid-column: auto;
+  }
+  .dashboard-middle > .equipment-panel .equipment-slots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .fighter-attributes-header,
+  .warrior-build-heading {
+    flex-wrap: wrap;
+    padding: 18px;
+    gap: 12px;
+  }
+  .fighter-attributes-header h3,
+  .warrior-build-heading h3 {
+    font-size: 26px;
+  }
+  .fighter-attributes-header .eyebrow,
+  .warrior-build-heading .eyebrow {
+    font-size: 8px;
+  }
+  .fighter-attributes-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fighter-scouter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 135px;
+    align-items: center;
+    gap: 8px;
+    padding: 18px;
+    border-right: 0;
+    border-bottom: 1px solid #335164;
+  }
+  .fighter-power-reading > strong {
+    font-size: 46px;
+  }
+  .fighter-scouter > svg {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 135px;
+    margin: 0;
+  }
+  .fighter-resource-readings {
+    grid-column: 1;
+    gap: 7px;
+  }
+  .fighter-profile-caption {
+    grid-column: 1 / -1;
+    margin-top: 5px;
+  }
+  .fighter-attribute-cards {
+    gap: 10px;
+  }
+  .fighter-attributes-footnote {
+    padding: 12px 18px;
+    font-size: 10px;
+  }
+  .warrior-build {
+    padding: 0 16px 20px;
+  }
+  .warrior-build-heading {
+    padding: 18px 0;
+  }
+  .warrior-point-budget {
+    padding: 8px 12px;
+  }
+  .warrior-point-budget > strong {
+    font-size: 34px;
+  }
+  .warrior-build .rpg-build-rows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .warrior-build .rpg-build-row {
+    padding: 12px;
+  }
+  .warrior-build-preview {
+    gap: 10px;
+  }
+  .warrior-build-preview > small {
+    width: 100%;
+  }
+  .warrior-build .rpg-actions > .button {
+    width: 100%;
+    justify-content: center;
+  }
+  .quest-completion {
+    padding: 25px 20px;
+  }
+  .quest-completion h2 {
+    font-size: 37px;
+  }
+  .quest-completion > .eyebrow {
+    font-size: 8px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .quest-completion[open] {
+    animation: warrior-notice-arrive 0.24s ease-out both;
+  }
+  @keyframes warrior-notice-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

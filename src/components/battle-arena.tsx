@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import {
   ChevronsRight,
@@ -82,6 +82,7 @@ export function BattleArena({
   autoplay,
   onAutoplayConsumed,
   revealLoot,
+  onPresentationComplete,
 }: {
   snapshot: GameSnapshot;
   busy: boolean;
@@ -89,11 +90,14 @@ export function BattleArena({
   autoplay: boolean;
   onAutoplayConsumed: () => void;
   revealLoot: boolean;
+  onPresentationComplete?: (battleId: string) => void;
 }) {
   const [lootReplay, setLootReplay] = useState(0);
   const [highlighted, setHighlighted] = useState<CombatActor | null>(null);
   const active = snapshot.activeBattle;
   const battle = active ?? snapshot.latestBattle!;
+  const [finishedLootId, setFinishedLootId] = useState<string | null>(null);
+  const lootComplete = useCallback(() => setFinishedLootId(battle.id), [battle.id]);
   const enemy = snapshot.catalog.enemies.find((candidate) => candidate.id === battle.enemyId);
   const events = battle.events;
   const start = events.find((event) => event.type === "start");
@@ -132,6 +136,28 @@ export function BattleArena({
     ],
   );
   const playback = useBattlePlayback(model, autoplay);
+  useEffect(() => {
+    if (active || playback.playing || playback.settledSeq < (model.frames.at(-1)?.seq ?? -1))
+      return;
+    if (
+      revealLoot &&
+      snapshot.latestBattle?.outcome === "victory" &&
+      snapshot.latestBattle.drops.length &&
+      finishedLootId !== battle.id
+    )
+      return;
+    onPresentationComplete?.(battle.id);
+  }, [
+    active,
+    playback.playing,
+    playback.settledSeq,
+    model.frames,
+    revealLoot,
+    snapshot.latestBattle,
+    finishedLootId,
+    battle.id,
+    onPresentationComplete,
+  ]);
   useEffect(() => {
     if (!autoplay) return;
     const frame = requestAnimationFrame(onAutoplayConsumed);
@@ -391,6 +417,7 @@ export function BattleArena({
               items={snapshot.catalog.items}
               enabled={!playback.playing}
               reveal={revealLoot || lootReplay > 0}
+              onComplete={lootComplete}
             />
           )}
       </div>

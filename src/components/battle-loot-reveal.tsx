@@ -16,11 +16,13 @@ export function BattleLootReveal({
   items,
   enabled,
   reveal,
+  onComplete,
 }: {
   battle: BattleResult;
   items: ItemDefinition[];
   enabled: boolean;
   reveal: boolean;
+  onComplete?: () => void;
 }) {
   const [index, setIndex] = useState<number | null>(0);
   const [readyFor, setReadyFor] = useState<string | null>(null);
@@ -30,6 +32,9 @@ export function BattleLootReveal({
   const item = items.find((i) => i.id === drop?.itemId);
   const revealKey = `${battle.id}-${index}`;
   const artReady = readyFor === revealKey;
+  useEffect(() => {
+    if (enabled && reveal && (!drops.length || index === null)) onComplete?.();
+  }, [enabled, reveal, drops.length, index, onComplete]);
   const advance = () =>
     setIndex((current) =>
       current === null || current + 1 >= battle.drops.length ? null : current + 1,

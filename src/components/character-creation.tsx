@@ -8,19 +8,16 @@ import { authClient } from "@/lib/auth-client";
 import { Brand } from "./brand";
 import { raceArtwork } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
-const labels = {
-  strength: "Força",
-  defense: "Defesa",
-  speed: "Velocidade",
-  endurance: "Resistência",
-  kiControl: "Controle de Ki",
-};
+import { FighterAttributes } from "./fighter-attributes";
+import { buildAttributes, emptyAllocation } from "@/game/builds";
+import { deriveBuildStats } from "@/game/attributes";
 export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
   const [raceId, setRaceId] = useState(races[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
   const race = races.find((r) => r.id === raceId);
+  const originAttributes = race ? buildAttributes(race, emptyAllocation()) : undefined;
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
@@ -97,7 +94,7 @@ export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
           </label>
           <div className="section-title">
             <h2>Escolha sua raça</h2>
-            <span>05 ORIGENS DISPONÍVEIS</span>
+            <span>{races.length.toString().padStart(2, "0")} ORIGENS DISPONÍVEIS</span>
           </div>
           <div className="race-grid">
             {races.map((r, index) => {
@@ -129,24 +126,19 @@ export function CharacterCreation({ races }: { races: RaceDefinition[] }) {
               );
             })}
           </div>
-          {race && (
-            <div className="race-details">
-              <div>
+          {race && originAttributes && (
+            <div className="origin-dossier">
+              <div className="origin-description">
                 <span className="eyebrow">SEU POTENCIAL INICIAL</span>
                 <h2>{race.name}</h2>
                 <p>{race.description}</p>
               </div>
-              <div className="race-attrs">
-                {Object.entries({ ...race.base, kiControl: race.kiBase ?? 10 }).map(
-                  ([key, value]) => (
-                    <div key={key}>
-                      <span>{labels[key as keyof typeof labels]}</span>
-                      <strong>{value}</strong>
-                      <small>Afinidade ×{race.affinities?.[key as keyof typeof labels] ?? 1}</small>
-                    </div>
-                  ),
-                )}
-              </div>
+              <FighterAttributes
+                race={race}
+                attributes={originAttributes}
+                stats={deriveBuildStats(originAttributes, 1)}
+                initial
+              />
             </div>
           )}
           {error && (

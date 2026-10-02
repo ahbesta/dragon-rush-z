@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { Check, LockKeyhole, ScrollText, Swords, Trophy } from "lucide-react";
 import type { GameSnapshot } from "@/game/types";
 import type { ActionPayload } from "@/game/validation";
@@ -10,12 +11,31 @@ export function AdventurePanel({
   busy,
   onAction,
   onArea,
+  focusedQuestIds = [],
 }: {
   snapshot: GameSnapshot;
   busy: boolean;
   onAction: (a: ActionPayload) => void;
   onArea: (areaId: string) => void;
+  focusedQuestIds?: string[];
 }) {
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!focusedQuestIds.length) return;
+    const frame = requestAnimationFrame(() => {
+      const target = [
+        ...(panel.current?.querySelectorAll<HTMLElement>("[data-quest-id]") ?? []),
+      ].find((element) => element.dataset.questId === focusedQuestIds[0]);
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({
+        block: "center",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusedQuestIds]);
   const { character: c, catalog } = snapshot;
   const context = {
     level: c.level,
@@ -27,7 +47,7 @@ export function AdventurePanel({
     (ch) => !c.flags.includes(`quest:${ch.finaleQuestId}`),
   );
   return (
-    <div className="rpg-campaign">
+    <div className="rpg-campaign" ref={panel}>
       <div className="rpg-heading">
         <span className="eyebrow orange">DRAGON BALL CLÁSSICO</span>
         <h2>
@@ -43,7 +63,12 @@ export function AdventurePanel({
           <details
             key={ch.id}
             className={`panel rpg-chapter${completed ? " completed" : ""}`}
-            open={ch.id === activeChapter?.id}
+            open={
+              ch.id === activeChapter?.id ||
+              catalog.quests.some(
+                (quest) => quest.chapterId === ch.id && focusedQuestIds.includes(quest.id),
+              )
+            }
           >
             <summary>
               <div className="rpg-chapter-thumb">
@@ -66,7 +91,12 @@ export function AdventurePanel({
                   const progress = c.questProgress?.find((p) => p.questId === q.id);
                   const ready = questReady(q, progress, snapshot.inventory);
                   return (
-                    <article className={`rpg-quest${reasons.length ? " locked" : ""}`} key={q.id}>
+                    <article
+                      className={`rpg-quest${reasons.length ? " locked" : ""}${ready && !reasons.length ? " reward-ready" : ""}`}
+                      key={q.id}
+                      data-quest-id={q.id}
+                      tabIndex={-1}
+                    >
                       <div>
                         <span className={`badge ${progress?.claimed ? "green" : ""}`}>
                           {progress?.claimed

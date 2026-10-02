@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Crosshair, Minus, Plus, Zap } from "lucide-react";
+import { Flame, Minus, Plus, Zap } from "lucide-react";
 import type { GameSnapshot } from "@/game/types";
 import type { ActionPayload } from "@/game/validation";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/game/builds";
 import { deriveBuildStats } from "@/game/attributes";
 import { attributeIcons, attributeLabels, formatNumber } from "./game-primitives";
+import { attributePurposes } from "./fighter-attributes";
 
 export function BuildPanel({
   snapshot,
@@ -37,12 +38,23 @@ export function BuildPanel({
     .filter(Boolean);
   const previewStats = deriveBuildStats(preview, snapshot.character.level, equipped);
   return (
-    <section className="panel rpg-build" aria-label="Distribuir atributos">
-      <div className="section-title">
-        <h3>
-          <Crosshair size={20} /> Construa seu guerreiro
-        </h3>
-        <span className="badge orange">{available} pontos livres</span>
+    <section className="panel rpg-build warrior-build" aria-label="Distribuir atributos">
+      <div className="warrior-build-heading">
+        <div>
+          <span className="eyebrow">ROMPA SEUS LIMITES · EVOLUÇÃO</span>
+          <h3>
+            <Flame size={25} />
+            Construa seu guerreiro
+          </h3>
+        </div>
+        <div className="warrior-point-budget" role="status">
+          <strong>{available}</strong>
+          <span>
+            PONTOS
+            <br />
+            LIVRES
+          </span>
+        </div>
       </div>
       <p className="muted">
         Cinco pontos por nível. Sua raça potencializa o investimento; equipamentos somam seus
@@ -53,12 +65,15 @@ export function BuildPanel({
           const Icon = attributeIcons[key];
           return (
             <div className="rpg-build-row" key={key}>
-              <Icon size={21} />
+              <span className="build-attribute-icon">
+                <Icon size={22} />
+              </span>
               <div>
                 <strong>{attributeLabels[key]}</strong>
-                <small>
-                  Afinidade ×{snapshot.race.affinities?.[key] ?? 1} · {allocated[key]} pontos
-                  investidos
+                <small>{attributePurposes[key]}</small>
+                <small className="build-affinity">
+                  Afinidade ×{(snapshot.race.affinities?.[key] ?? 1).toLocaleString("pt-BR")} ·{" "}
+                  {allocated[key]} {allocated[key] === 1 ? "ponto investido" : "pontos investidos"}
                 </small>
               </div>
               <strong className="rpg-stat-preview">
@@ -86,9 +101,10 @@ export function BuildPanel({
           );
         })}
       </div>
-      <div className="rpg-build-summary">
+      <div className="rpg-build-summary warrior-build-preview" aria-live="polite">
+        <small>LEITURA APÓS CONFIRMAR</small>
         <span>
-          <Zap size={16} /> PL previsto: <strong>{formatNumber(previewStats.powerLevel)}</strong>
+          <Zap size={18} /> PL previsto: <strong>{formatNumber(previewStats.powerLevel)}</strong>
         </span>
         <span>
           HP {previewStats.maxHp} · Ki {previewStats.maxKi}

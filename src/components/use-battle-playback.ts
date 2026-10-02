@@ -13,6 +13,7 @@ export function useBattlePlayback(model: BattlePresentation, autoplay: boolean) 
     frame: null as BattleFrame | null,
     vitals: autoplay ? model.initial : model.final,
     playing: autoplay && model.frames.length > 0,
+    settledSeq: autoplay ? -1 : (model.frames.at(-1)?.seq ?? -1),
     reducedMotion: false,
     phase: autoplay ? undefined : model.frames.at(-1)?.phase,
     cycle: 0,
@@ -43,6 +44,7 @@ export function useBattlePlayback(model: BattlePresentation, autoplay: boolean) 
       frame: null,
       vitals: current.final,
       playing: false,
+      settledSeq: current.frames.at(-1)?.seq ?? -1,
       phase: current.frames.at(-1)?.phase,
       reducedMotion: reduced.current,
     }));
