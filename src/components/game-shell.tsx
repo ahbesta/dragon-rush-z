@@ -41,10 +41,11 @@ import { CombatModeSelector } from "./combat-controls";
 import { ExplorationPanel } from "./exploration-panel";
 import { BattleArena } from "./battle-arena";
 import { GameLobby } from "./game-lobby";
-import { transformationArtwork, destinationArtwork, techniqueArtwork } from "@/lib/game-art";
+import { transformationArtwork, techniqueArtwork } from "@/lib/game-art";
 import { ArtworkImage } from "./artwork-image";
 import { EnemyPortrait } from "./enemy-portrait";
-import { ActivityAnimation } from "./activity-animation";
+import { TrainingPanel } from "./training-panel";
+import { trainingProgress, trainingMinSeconds, formatTrainingTime } from "@/game/training";
 import { BuildPanel } from "./build-panel";
 import { AdventurePanel } from "./adventure-panel";
 import { SettlementPanel } from "./settlement-panel";
@@ -322,6 +323,10 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
   const remaining = activity
     ? Math.max(0, Math.ceil((new Date(activity.finishesAt).getTime() - now) / 1000))
     : 0;
+  const idleTraining = activity?.training
+    ? trainingProgress(activity.training, activity.finishesAt, now)
+    : null;
+  const canFinishActivity = idleTraining?.canCollect ?? remaining === 0;
   const battleWait = c.nextBattleAt
     ? Math.max(0, Math.ceil((new Date(c.nextBattleAt).getTime() - now) / 1000))
     : 0;
@@ -355,7 +360,6 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
       window.scrollTo(0, 0);
     }
   }
-  const trainingRule = catalog.policies.find((p) => p.id === "training");
   const restRule = catalog.policies.find((p) => p.id === "rest");
   const ActionIcon = busy ? LoaderCircle : ArrowRight;
 
@@ -627,29 +631,40 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               />
             </div>
           )}
-          {activity && (
+          {activity && (!activity.training || section !== "training") && (
             <div className="activity-banner">
               <span className="activity-icon">
                 {activity.kind === "training" ? <Dumbbell size={22} /> : <Heart size={22} />}
               </span>
               <div>
                 <strong>
-                  {activity.kind === "training"
-                    ? "Treinamento em andamento"
-                    : "Recuperando suas forças"}
+                  {idleTraining
+                    ? `${n(idleTraining.xp)} XP acumulados no treino`
+                    : activity.kind === "training"
+                      ? "Treinamento em andamento"
+                      : "Recuperando suas forças"}
                 </strong>
                 <p>
-                  {remaining
-                    ? `Faltam ${remaining}s. Você pode explorar as telas enquanto aguarda.`
-                    : "Atividade pronta! Conclua para receber o resultado."}
+                  {idleTraining
+                    ? `${formatTrainingTime(idleTraining.seconds)} / 24h · Colete para encerrar o treino e voltar à aventura.`
+                    : remaining
+                      ? `Faltam ${remaining}s. Você pode explorar as telas enquanto aguarda.`
+                      : "Atividade pronta! Conclua para receber o resultado."}
                 </p>
               </div>
               <button
                 className="button small primary"
-                disabled={busy || remaining > 0}
+                disabled={busy || !canFinishActivity}
                 onClick={() => act({ action: "activity.finish", activityId: activity.id })}
               >
-                {remaining ? (
+                {idleTraining ? (
+                  <>
+                    <Zap size={16} />
+                    {idleTraining.canCollect
+                      ? "Coletar treinamento"
+                      : `Coleta em ${Math.max(0, trainingMinSeconds - idleTraining.seconds)}s`}
+                  </>
+                ) : remaining ? (
                   <>
                     <Clock3 size={15} /> {remaining}s
                   </>
@@ -890,104 +905,13 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           )}
 
           {section === "training" && (
-            <div className="training-grid">
-              <section className="panel training-card">
-                <div
-                  className={`activity-art training-art${activity?.kind === "training" && remaining > 0 ? " activity-art-active" : ""}`}
-                >
-                  {activity?.kind === "training" && remaining > 0 ? (
-                    <ActivityAnimation
-                      kind="training"
-                      remaining={remaining}
-                      duration={trainingRule?.durationSeconds ?? remaining}
-                      fallbackArt={destinationArtwork.training}
-                    />
-                  ) : (
-                    <ArtworkImage
-                      art={destinationArtwork.training}
-                      sizes="(max-width: 900px) 90vw, 55vw"
-                      fallback={<Dumbbell size={52} />}
-                    />
-                  )}
-                </div>
-                <span className="eyebrow orange">DISCIPLINA. FOCO. EVOLUÇÃO.</span>
-                <h2>Treinamento de combate</h2>
-                <p>
-                  Fortaleça seu corpo e aprenda a concentrar seu Ki.
-                  <br />
-                  Cada sessão aproxima você do próximo nível.
-                </p>
-                <div className="training-rewards">
-                  <span>
-                    <Zap size={20} />
-                    <strong>+{trainingRule?.xpReward}</strong>
-                    <small>EXPERIÊNCIA</small>
-                  </span>
-                  <span>
-                    <Clock3 size={20} />
-                    <strong>{trainingRule?.durationSeconds}s</strong>
-                    <small>DURAÇÃO</small>
-                  </span>
-                </div>
-                <button
-                  className="button primary"
-                  disabled={blocked}
-                  onClick={() => act({ action: "training.start" })}
-                >
-                  {busy ? <LoaderCircle className="spin" size={18} /> : <Dumbbell size={18} />}{" "}
-                  Iniciar treinamento
-                </button>
-                <small>Uma sessão por vez. Seu treino continua ao fechar o jogo.</small>
-              </section>
-              <div>
-                <section className="panel recovery-card">
-                  <div
-                    className={`activity-art recovery-art${activity?.kind === "rest" && remaining > 0 ? " activity-art-active" : ""}`}
-                  >
-                    {activity?.kind === "rest" && remaining > 0 ? (
-                      <ActivityAnimation
-                        kind="rest"
-                        remaining={remaining}
-                        duration={restRule?.durationSeconds ?? remaining}
-                        fallbackArt={destinationArtwork.rest}
-                      />
-                    ) : (
-                      <ArtworkImage
-                        art={destinationArtwork.rest}
-                        sizes="(max-width: 900px) 90vw, 40vw"
-                        fallback={<Heart size={30} />}
-                      />
-                    )}
-                  </div>
-                  <h3>Recupere suas forças</h3>
-                  <p>
-                    Descansar restaura completamente seu HP e Ki. Prepare-se para voltar à batalha.
-                  </p>
-                  <div className="recovery-meters">
-                    <Meter label="HP" value={c.hp} max={stats.maxHp} />
-                    <Meter label="Ki" value={c.ki} max={stats.maxKi} variant="ki" />
-                  </div>
-                  <button
-                    className="button secondary"
-                    disabled={blocked}
-                    onClick={() => act({ action: "rest.start" })}
-                  >
-                    <Clock3 size={16} /> Descansar por {restRule?.durationSeconds}s
-                  </button>
-                  <span className="free-tag">GRATUITO • SEM CUSTO DE ZENI</span>
-                </section>
-                <section className="training-tip">
-                  <Sparkles size={22} />
-                  <div>
-                    <strong>Cada raça tem seu potencial.</strong>
-                    <p>
-                      {snapshot.race.trait}. Distribua os pontos de cada nível para construir sua
-                      especialização.
-                    </p>
-                  </div>
-                </section>
-              </div>
-            </div>
+            <TrainingPanel
+              snapshot={snapshot}
+              now={now}
+              busy={busy}
+              blocked={blocked}
+              onAction={act}
+            />
           )}
 
           {section === "battle" && (
@@ -1375,6 +1299,7 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
         dismissedActivityId !== activity.id && (
           <ActivityCompletionNotice
             kind={activity.kind}
+            xp={idleTraining?.xp}
             busy={busy}
             error={notice?.error ? notice.text : undefined}
             onClose={() => setDismissedActivityId(activity.id)}

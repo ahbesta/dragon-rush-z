@@ -5,6 +5,7 @@ import { mkdir } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 import { createDatabase } from "../../src/server/db/client";
 import * as s from "../../src/server/db/schema";
+import { expectFullActivityScene } from "./activity-scene";
 
 const email = `activity-art-${randomUUID()}@example.test`;
 const database = createDatabase(process.env.DATABASE_URL!);
@@ -55,7 +56,8 @@ test("cenas animadas apenas na atividade em andamento, na página e visíveis", 
   await expect(training).toHaveAttribute("data-playing", "true");
   await expect(page.locator('[data-activity-animation="rest"]')).toHaveCount(0);
   const frames = training.locator("img");
-  expect(await frames.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(3840);
+  expect(await frames.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(4800);
+  await expectFullActivityScene(training, 900);
   const firstFrame = await frames.evaluate((img) => getComputedStyle(img).transform);
   await expect
     .poll(() => frames.evaluate((img) => getComputedStyle(img).transform))
@@ -95,6 +97,7 @@ test("cenas animadas apenas na atividade em andamento, na página e visíveis", 
     path: ".local/screenshots/training-animated-mobile.png",
     fullPage: true,
   });
+  await expectFullActivityScene(training, 900);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.locator(".training-tip").scrollIntoViewIfNeeded();
   await expect(training).toHaveAttribute("data-playing", "false");
@@ -107,11 +110,22 @@ test("cenas animadas apenas na atividade em andamento, na página e visíveis", 
   await expect(training).toHaveCount(1);
   await training.scrollIntoViewIfNeeded();
   await expect(training).toHaveAttribute("data-playing", "true");
-  await expect(training).toHaveCount(0, { timeout: 45000 });
-  // Expiry stops animation; claiming XP still needs the existing server action.
   let state = await (await page.request.get("/api/game")).json();
+  await database.db
+    .update(s.activities)
+    .set({ startedAt: new Date(0), finishesAt: new Date(86400000) })
+    .where(eq(s.activities.id, state.snapshot.activity.id));
+  await page.reload();
+  await page
+    .getByRole("dialog", { name: "Treino finalizado!", exact: true })
+    .getByRole("button", { name: /Depois/ })
+    .click();
+  await go(page, "Treinamento");
+  await expect(training).toHaveCount(0);
+  // Expiry stops animation; claiming XP still needs the existing server action.
+  state = await (await page.request.get("/api/game")).json();
   expect(state.snapshot.activity.kind).toBe("training");
-  await page.getByRole("button", { name: "Concluir atividade", exact: true }).click();
+  await page.getByRole("button", { name: /Coletar .* XP e encerrar/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "Treinamento concluído" })).toBeVisible();
   await expect(page.locator("[data-activity-animation]")).toHaveCount(0);
 
@@ -120,10 +134,12 @@ test("cenas animadas apenas na atividade em andamento, na página e visíveis", 
   await rest.scrollIntoViewIfNeeded();
   await expect(rest).toHaveAttribute("data-playing", "true");
   await expect(training).toHaveCount(0);
+  await expectFullActivityScene(rest, 3000);
   await page.screenshot({ path: ".local/screenshots/rest-animated-mobile.png", fullPage: true });
   await page.setViewportSize({ width: 1440, height: 900 });
   await rest.scrollIntoViewIfNeeded();
   await expect(rest).toHaveAttribute("data-playing", "true");
+  await expectFullActivityScene(rest, 3000);
   await page.screenshot({ path: ".local/screenshots/rest-animated-desktop.png", fullPage: true });
   await go(page, "Explorar");
   await expect(page.locator("[data-activity-animation]")).toHaveCount(0);

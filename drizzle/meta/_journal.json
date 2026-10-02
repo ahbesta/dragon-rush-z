@@ -36,6 +36,20 @@
       "when": 1790950062757,
       "tag": "0004_exploration_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790972141371,
+      "tag": "0005_happy_magus",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790974279301,
+      "tag": "0006_robust_post",
+      "breakpoints": true
     }
   ]
 }

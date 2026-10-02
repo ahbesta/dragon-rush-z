@@ -7,12 +7,14 @@ export function ActivityCompletionNotice({
   kind,
   busy,
   error,
+  xp,
   onClose,
   onConclude,
 }: {
   kind: "training" | "rest";
   busy: boolean;
   error?: string;
+  xp?: number;
   onClose: () => void;
   onConclude: () => void;
 }) {
@@ -56,13 +58,19 @@ export function ActivityCompletionNotice({
       </h2>
       <p id="activity-completion-description">
         {training
-          ? "Seu treinamento terminou. Conclua a sessão para receber os ganhos e registrar seu progresso."
+          ? xp !== undefined
+            ? "Seu treino atingiu o limite de 24 horas. O XP parou de acumular: colete para receber seus ganhos."
+            : "Seu treinamento terminou. Conclua a sessão para receber os ganhos e registrar seu progresso."
           : "O tempo de descanso terminou. Conclua para recuperar seu HP e Ki."}
       </p>
       <div className="activity-completion-result">
         <Icon size={22} />
         <span>
-          {training ? "Sessão pronta para concluir" : "Recuperação pronta para concluir"}
+          {training
+            ? xp !== undefined
+              ? `+${xp.toLocaleString("pt-BR")} XP acumulados`
+              : "Sessão pronta para concluir"
+            : "Recuperação pronta para concluir"}
           <small>
             {training
               ? "Os ganhos são entregues ao confirmar."

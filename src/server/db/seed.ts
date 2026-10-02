@@ -10,6 +10,11 @@ export async function seedDatabase(db: Db | Transaction) {
     await db.insert(s.races).values(row).onConflictDoUpdate({ target: s.races.id, set: row });
   for (const row of c.masters)
     await db.insert(s.masters).values(row).onConflictDoUpdate({ target: s.masters.id, set: row });
+  for (const row of c.trainings)
+    await db
+      .insert(s.trainings)
+      .values(row)
+      .onConflictDoUpdate({ target: s.trainings.id, set: row });
   for (const row of c.policies)
     await db
       .insert(s.actionPolicies)

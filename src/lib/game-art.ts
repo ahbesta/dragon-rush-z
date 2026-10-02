@@ -7,18 +7,58 @@ export type GameArtwork = {
 
 export const activityAnimationArtwork = {
   training: {
-    src: "/images/activities/treino-kame.webp",
+    src: "/images/activities/treino-kame-v3.webp",
     alt: "Goku e Kuririn entregam leite com cascos de tartaruga durante o treinamento do Mestre Kame",
-    width: 3840,
-    height: 360,
+    width: 4800,
+    height: 450,
   },
   rest: {
-    src: "/images/activities/descanso-kame.webp",
+    src: "/images/activities/descanso-kame-v3.webp",
     alt: "Goku, Kuririn e Yamcha relaxam na banheira da Kame House, com Puar ao lado",
-    width: 3840,
-    height: 360,
+    width: 4800,
+    height: 450,
   },
 } satisfies Record<"training" | "rest", GameArtwork>;
+
+export const trainingArtwork: Record<string, { still: GameArtwork; animation: GameArtwork }> = {
+  kame: {
+    still: {
+      src: "/images/activities/treino-kame-still-v3.webp",
+      alt: "Treinamento na Kame House",
+      width: 800,
+      height: 450,
+    },
+    animation: activityAnimationArtwork.training,
+  },
+  karin: {
+    still: {
+      src: "/images/activities/treino-karin-still-v3.webp",
+      alt: "Goku enfrenta a prova dos reflexos na Torre de Karin",
+      width: 800,
+      height: 450,
+    },
+    animation: {
+      src: "/images/activities/treino-karin-v3.webp",
+      alt: "Goku tenta alcançar a água sagrada enquanto Karin se esquiva",
+      width: 4800,
+      height: 450,
+    },
+  },
+  popo: {
+    still: {
+      src: "/images/activities/treino-popo-still-v3.webp",
+      alt: "Mr. Popo ensina Goku no Templo de Kami",
+      width: 800,
+      height: 450,
+    },
+    animation: {
+      src: "/images/activities/treino-popo-v3.webp",
+      alt: "Goku concentra uma esfera de Ki durante o treinamento com Mr. Popo",
+      width: 4800,
+      height: 450,
+    },
+  },
+};
 
 const arena = (name: string, alt: string): GameArtwork => ({
   src: `/images/arenas/${name}.webp`,
@@ -186,11 +226,16 @@ export const areaArtwork: Readonly<Partial<Record<string, GameArtwork>>> = {
   "red-ribbon": scene("red-ribbon", "Fortaleza e torres do exército Red Ribbon"),
 };
 export const destinationArtwork = {
-  training: scene("treinamento", "Campo de treinamento com pesos e boneco de artes marciais"),
+  training: trainingArtwork.kame.still,
   explore: areaArtwork.floresta!,
   battle: scene("combate", "Arena de artes marciais com um choque de energia"),
   techniques: scene("ki", "Esfera de Ki azul cercada por ondas de energia"),
-  rest: scene("descanso", "Refúgio tranquilo junto a um oásis para recuperar as forças"),
+  rest: {
+    src: "/images/activities/descanso-kame-still-v3.webp",
+    alt: "Descanso na banheira da Kame House",
+    width: 800,
+    height: 450,
+  },
 } satisfies Record<string, GameArtwork>;
 
 export const enemyArtwork: Readonly<Partial<Record<string, GameArtwork>>> = Object.fromEntries(

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Compass, LockKeyhole, Map, UserRound, X } from "lucide-react";
 import type { GameSnapshot } from "@/game/types";
+import { trainingHourlyXp } from "@/game/training";
 import { areaArtwork, destinationArtwork } from "@/lib/game-art";
 import {
   mapCrossroads,
@@ -174,6 +175,7 @@ export function WorldMap({
     overlay?.kind === "activity"
       ? catalog.policies.find((p) => p.id === overlay.activity)
       : undefined;
+  const training = catalog.trainings[0];
   return (
     <section className="world-map" aria-label="Mapa interativo da Terra">
       <div className="world-map-heading">
@@ -384,10 +386,14 @@ export function WorldMap({
                   : "Recupere completamente seu HP e Ki antes de voltar à aventura."}
               </p>
               <div className="map-activity-details">
-                <span>{policy?.durationSeconds}s por sessão</span>
+                <span>
+                  {overlay.activity === "training"
+                    ? "Idle · acumula offline até 24h"
+                    : `${policy?.durationSeconds}s por sessão`}
+                </span>
                 <strong>
                   {overlay.activity === "training"
-                    ? `+${policy?.xpReward} XP`
+                    ? `${training ? trainingHourlyXp(training, character.level) : 0} XP/h · coleta após 5 min`
                     : "Gratuito · HP e Ki completos"}
                 </strong>
               </div>

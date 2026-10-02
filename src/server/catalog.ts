@@ -16,6 +16,7 @@ export async function readCatalog(
     ${rowsAsJson(s.items)} AS items, ${rowsAsJson(s.areas)} AS areas,
     ${rowsAsJson(s.enemies)} AS enemies, ${rowsAsJson(s.transformations)} AS transformations,
     ${rowsAsJson(s.masters)} AS masters, ${rowsAsJson(s.encounters)} AS encounters,
+    ${rowsAsJson(s.trainings)} AS trainings,
     ${rowsAsJson(s.drops)} AS drops, ${rowsAsJson(s.actionPolicies)} AS policies,
     ${rowsAsJson(s.chapters)} AS chapters, ${rowsAsJson(s.quests)} AS quests,
     ${rowsAsJson(s.settlements)} AS settlements, ${rowsAsJson(s.shopOffers)} AS offers,
@@ -25,6 +26,7 @@ export async function readCatalog(
   const catalog = result.rows[0];
   return {
     ...catalog,
+    trainings: catalog.trainings.sort((a, b) => a.order - b.order),
     areas: catalog.areas.sort((a, b) => a.order - b.order),
     chapters: catalog.chapters.sort((a, b) => a.order - b.order),
     enemies: catalog.enemies.map((e) => ({

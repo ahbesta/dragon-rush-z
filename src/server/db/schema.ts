@@ -131,6 +131,31 @@ export const masters = pgTable("masters", {
   name: text("name").notNull(),
   available: boolean("available").notNull().default(false),
 });
+export const trainings = pgTable(
+  "trainings",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    masterId: text("master_id")
+      .notNull()
+      .references(() => masters.id),
+    location: text("location").notNull(),
+    description: text("description").notNull(),
+    artId: text("art_id").notNull(),
+    xpPerMinute: integer("xp_per_minute").notNull().default(1),
+    baseXpPerHour: integer("base_xp_per_hour").notNull().default(20),
+    levelRatePercent: integer("level_rate_percent").notNull().default(3),
+    requirements: jsonb("requirements").$type<Requirements>().notNull().default({}),
+    order: integer("sort_order").notNull(),
+  },
+  (t) => [
+    check("training_rate_bounds", sql`${t.xpPerMinute} BETWEEN 1 AND 10000`),
+    check(
+      "training_hourly_bounds",
+      sql`${t.baseXpPerHour} BETWEEN 1 AND 10000 AND ${t.levelRatePercent} BETWEEN 0 AND 100`,
+    ),
+  ],
+);
 export const techniques = pgTable(
   "techniques",
   {
@@ -482,8 +507,19 @@ export const activities = pgTable(
     startedAt: time("started_at").notNull().defaultNow(),
     finishesAt: time("finishes_at").notNull(),
     completedAt: time("completed_at"),
+    trainingId: text("training_id").references(() => trainings.id),
+    xpPerMinute: integer("xp_per_minute"),
+    xpPerHour: integer("xp_per_hour"),
   },
   (t) => [
+    check(
+      "activity_training_rate",
+      sql`${t.xpPerMinute} IS NULL OR ${t.xpPerMinute} BETWEEN 1 AND 10000`,
+    ),
+    check(
+      "activity_training_hourly_rate",
+      sql`${t.xpPerHour} IS NULL OR ${t.xpPerHour} BETWEEN 1 AND 1000000`,
+    ),
     uniqueIndex("one_pending_activity")
       .on(t.characterId)
       .where(sql`${t.completedAt} IS NULL`),

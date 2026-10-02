@@ -231,7 +231,11 @@ test("treino e descanso avisam fora da tela; concluir valida no servidor, adiar 
     const pending = await state(page);
     await database.db
       .update(s.activities)
-      .set({ finishesAt: new Date(Date.now() + 2500) })
+      .set(
+        kind === "training"
+          ? { startedAt: new Date(0), finishesAt: new Date(86400000) }
+          : { finishesAt: new Date(Date.now() + 2500) },
+      )
       .where(eq(s.activities.id, pending.activity!.id));
     await refresh(page);
     await go(page, "Inventário");
@@ -260,12 +264,11 @@ test("treino e descanso avisam fora da tela; concluir valida no servidor, adiar 
     await expect.poll(async () => (await state(page)).activity).toBeNull();
     await expect(modal).not.toBeVisible();
     const completed = await state(page);
-    expect(completed.character.xp).toBe(
-      before.character.xp +
-        (kind === "training"
-          ? before.catalog.policies.find((rule) => rule.id === "training")!.xpReward
-          : 0),
-    );
+    if (kind === "training") {
+      expect(completed.character).toMatchObject({ level: 4, xp: 30 });
+    } else {
+      expect(completed.character.xp).toBe(before.character.xp);
+    }
     if (kind === "rest") {
       expect(completed.character.hp).toBe(completed.stats.maxHp);
       expect(completed.character.ki).toBe(completed.stats.maxKi);

@@ -203,9 +203,14 @@ test("mapa: raças, caminhada, destinos, áreas, teclado, mercado e atividades r
     dialog.getByRole("button", { name: "Iniciar descanso", exact: true }),
   ).toBeDisabled();
   await dialog.getByRole("button", { name: "Ver treinamento e descanso", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Concluir atividade", exact: true })
-    .click({ timeout: 45000 });
+  const pending: GameSnapshot = (await (await page.request.get("/api/game")).json()).snapshot;
+  await database.db
+    .update(s.activities)
+    .set({ startedAt: new Date(Date.now() - 900000) })
+    .where(eq(s.activities.id, pending.activity!.id));
+  await page.reload();
+  await go(page, "Treinamento");
+  await page.getByRole("button", { name: /Coletar .* XP e encerrar/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "Treinamento concluído" })).toBeVisible();
   await go(page, "Personagem");
   await page.getByRole("button", { name: "Mapa: Descansar", exact: true }).click();

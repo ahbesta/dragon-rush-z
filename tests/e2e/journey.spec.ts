@@ -116,12 +116,18 @@ test("jornada real: conta, build, treino, campanha, vila, boss manual e ranking"
     },
   });
   expect(early.status()).toBe(409);
+  await database.db
+    .update(s.activities)
+    .set({ startedAt: new Date(0), finishesAt: new Date(300000) })
+    .where(eq(s.activities.id, snapshot.activity!.id));
   await page.reload();
-  await go(page, "Treinamento");
   await page
-    .getByRole("button", { name: "Concluir atividade", exact: true })
-    .click({ timeout: 45000 });
-  await expect.poll(async () => (await state()).character.xp).toBe(36);
+    .getByRole("dialog", { name: "Treino finalizado!", exact: true })
+    .getByRole("button", { name: /Depois/ })
+    .click();
+  await go(page, "Treinamento");
+  await page.getByRole("button", { name: /Coletar .* XP e encerrar/ }).click();
+  await expect.poll(async () => (await state()).character.xp).toBe(27);
   await action({
     action: "attributes.allocate",
     points: { ...emptyAllocation(), strength: 2, defense: 1, kiControl: 2 },

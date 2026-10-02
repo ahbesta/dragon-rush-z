@@ -9,6 +9,7 @@ export const legacyCatalog: Omit<
   Catalog,
   "chapters" | "quests" | "settlements" | "offers" | "recipes"
 > = {
+  trainings: [],
   races: [
     {
       id: "saiyajin",

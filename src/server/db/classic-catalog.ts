@@ -1559,6 +1559,7 @@ drop("dinossauro", "armadura-simples", 0.06);
 drop("soldado-red-ribbon", "colete-red-ribbon", 0.02);
 
 export const seedCatalog: Catalog = {
+  trainings: [],
   races: legacy.races.map((r) => ({
     ...r,
     kiBase: 10,

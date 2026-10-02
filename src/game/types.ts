@@ -136,6 +136,7 @@ export type DropDefinition = {
 };
 export type ActionPolicy = { id: string; durationSeconds: number; xpReward: number };
 export type Catalog = {
+  trainings: import("./training").TrainingDefinition[];
   explorationEvents?: import("./exploration/types").ExplorationEventDefinition[];
   explorationRoutes?: import("./exploration/types").ExplorationRoute[];
   races: RaceDefinition[];
@@ -339,6 +340,9 @@ export type ActivityState = {
   startedAt: Date;
   finishesAt: Date;
   completedAt: Date | null;
+  trainingId?: string | null;
+  xpPerMinute?: number | null;
+  xpPerHour?: number | null;
 };
 export type BattleEvent = { seq: number; round: number } & (
   | {
@@ -420,7 +424,12 @@ export type GameSnapshot = {
   inventory: { itemId: string; quantity: number }[];
   learnedTechniques: string[];
   unlockedTransformations: string[];
-  activity: { id: string; kind: "training" | "rest"; finishesAt: string } | null;
+  activity: {
+    id: string;
+    kind: "training" | "rest";
+    finishesAt: string;
+    training?: import("./training").IdleTraining;
+  } | null;
   history: HistoryEntry[];
   latestBattle: BattleResult | null;
   activeBattle: ActiveBattle | null;

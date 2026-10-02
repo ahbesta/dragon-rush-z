@@ -18,6 +18,12 @@ import {
 import type { ExplorationSession } from "@/game/exploration/types";
 import { deriveBuildStats } from "@/game/attributes";
 import { xpRequired } from "@/game/progression";
+import {
+  trainingProgress,
+  trainingMaxSeconds,
+  trainingMinSeconds,
+  trainingHourlyXp,
+} from "@/game/training";
 import { unmetRequirements } from "@/game/requirements";
 import { createStrategicCombat, advanceStrategicCombat } from "@/game/strategic-combat";
 import { requiresManualCombat } from "@/game/combat-access";
@@ -240,9 +246,13 @@ export async function executeAction(
     if (pending && input.action !== "activity.finish" && input.action !== "combat.mode")
       throw new GameError(
         "ACTIVITY_PENDING",
-        "Conclua a atividade atual antes de iniciar outra ação.",
+        pending.kind === "training" && pending.trainingId
+          ? "Seu guerreiro está treinando. Colete o XP e encerre o treino antes de iniciar outra ação."
+          : "Conclua a atividade atual antes de iniciar outra ação.",
         409,
-        pending.finishesAt.toISOString(),
+        pending.kind === "training" && pending.trainingId
+          ? new Date(pending.startedAt.getTime() + trainingMinSeconds * 1000).toISOString()
+          : pending.finishesAt.toISOString(),
       );
     const result: Receipt = { message: "" };
     let [exploration] = await tx
@@ -712,24 +722,34 @@ export async function executeAction(
       case "rest.start": {
         const kind = input.action === "training.start" ? "training" : "rest";
         const rule = policy(kind);
+        const training =
+          input.action === "training.start"
+            ? catalog.trainings.find((t) => t.id === (input.trainingId ?? "kame-basic"))
+            : undefined;
+        if (kind === "training" && !training) return missing("Treinamento não encontrado.");
+        if (training) requireAllowed(character, catalog, training.requirements);
+        const duration = training ? trainingMaxSeconds : rule.durationSeconds;
+        const hourlyXp = training ? trainingHourlyXp(training, character.level) : undefined;
         const [activity] = await tx
           .insert(s.activities)
           .values({
             characterId: character.id,
             kind,
             startedAt: now,
-            finishesAt: new Date(now.getTime() + rule.durationSeconds * 1000),
+            finishesAt: new Date(now.getTime() + duration * 1000),
+            trainingId: training?.id,
+            xpPerHour: hourlyXp,
           })
           .returning();
         result.message =
           kind === "training"
-            ? "Treinamento iniciado. Concentre seu Ki!"
+            ? `Treinamento iniciado com ${catalog.masters.find((m) => m.id === training!.masterId)?.name}: ${hourlyXp} XP/h. Acumula offline por até 24 horas.`
             : "Descanso iniciado. Recupere suas forças.";
         await appendHistory(
           tx,
           character.id,
           kind,
-          `${result.message} Duração: ${rule.durationSeconds}s.`,
+          `${result.message} Duração máxima: ${duration}s.`,
         );
         if (!activity) throw new Error("Falha ao persistir atividade");
         break;
@@ -741,19 +761,33 @@ export async function executeAction(
             "Atividade inexistente ou já concluída.",
             409,
           );
-        if (now < pending.finishesAt)
+        const idle =
+          pending.kind === "training" && pending.trainingId && pending.xpPerHour
+            ? trainingProgress(
+                {
+                  trainingId: pending.trainingId,
+                  xpPerHour: pending.xpPerHour,
+                  startedAt: pending.startedAt.toISOString(),
+                },
+                pending.finishesAt.toISOString(),
+                now.getTime(),
+              )
+            : null;
+        if (idle ? !idle.canCollect : now < pending.finishesAt)
           throw new GameError(
             "COOLDOWN",
-            "A atividade ainda não terminou.",
+            idle
+              ? "Treine pelo menos cinco minutos antes de coletar."
+              : "A atividade ainda não terminou.",
             409,
-            pending.finishesAt.toISOString(),
+            idle?.claimAt ?? pending.finishesAt.toISOString(),
           );
         if (pending.kind === "rest") {
           character.hp = stats.maxHp;
           character.ki = stats.maxKi;
           result.message = "Descanso concluído. HP e Ki restaurados.";
         } else {
-          const reward = policy("training").xpReward;
+          const reward = idle?.xp ?? policy("training").xpReward;
           grantExperience(character, reward, race);
           advanceQuests(
             character,
@@ -767,7 +801,7 @@ export async function executeAction(
                 flags: character.flags,
               }).length === 0,
           );
-          result.message = `Treinamento concluído: +${reward} XP.`;
+          result.message = `Treinamento concluído: +${reward.toLocaleString("pt-BR")} XP${idle ? ` acumulados em ${Math.floor(idle.seconds / 60)} min` : ""}.`;
         }
         await tx
           .update(s.activities)
@@ -1000,7 +1034,14 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
         inventory: { itemId: string; quantity: number }[];
         learned: { techniqueId: string }[];
         unlocked: { transformationId: string }[];
-        activities: { id: string; kind: "training" | "rest"; finishesAt: string }[];
+        activities: {
+          id: string;
+          kind: "training" | "rest";
+          finishesAt: string;
+          startedAt: string;
+          trainingId: string | null;
+          xpPerHour: number | null;
+        }[];
         history: GameSnapshot["history"];
         battles: { result: BattleResult }[];
         active: { state: CombatState }[];
@@ -1088,6 +1129,17 @@ export async function readSnapshot(db: Db, userId: string): Promise<GameSnapshot
               id: activities[0].id,
               kind: activities[0].kind,
               finishesAt: new Date(activities[0].finishesAt).toISOString(),
+              ...(activities[0].kind === "training" &&
+              activities[0].trainingId &&
+              activities[0].xpPerHour
+                ? {
+                    training: {
+                      trainingId: activities[0].trainingId,
+                      xpPerHour: activities[0].xpPerHour,
+                      startedAt: new Date(activities[0].startedAt).toISOString(),
+                    },
+                  }
+                : {}),
             }
           : null,
         history: history.map((h) => ({

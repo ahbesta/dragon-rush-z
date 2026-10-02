@@ -144,7 +144,7 @@ export const actionInput = z.discriminatedUnion("action", [
       techniqueId: id,
     })
     .strict(),
-  z.object({ ...key, action: z.literal("training.start") }).strict(),
+  z.object({ ...key, action: z.literal("training.start"), trainingId: id.optional() }).strict(),
   z.object({ ...key, action: z.literal("rest.start") }).strict(),
   z.object({ ...key, action: z.literal("activity.finish"), activityId: z.uuid() }).strict(),
   z.object({ ...key, action: z.literal("explore"), areaId: id }).strict(),

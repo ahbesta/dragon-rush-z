@@ -227,7 +227,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
     const snap = (await readSnapshot(database.db, owner))!;
     await database.db
       .update(s.activities)
-      .set({ finishesAt: new Date(0) })
+      .set({ startedAt: new Date(0), finishesAt: new Date(300000) })
       .where(
         and(
           eq(s.activities.id, snap.activity!.id),
@@ -240,6 +240,6 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)("Concorrência em PostgreSQL Neo
       idempotencyKey: randomUUID(),
     };
     await Promise.all(Array.from({ length: 4 }, () => executeAction(database.db, owner, input)));
-    expect((await readSnapshot(database.db, owner))!.character.xp).toBe(10);
+    expect((await readSnapshot(database.db, owner))!.character.xp).toBe(1);
   });
 });

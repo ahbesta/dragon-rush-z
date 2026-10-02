@@ -60,6 +60,81 @@ afterAll(async () => {
   if (engine) await engine.close();
 });
 describe("Persistência PostgreSQL e transações", () => {
+  it("idle persiste início e taxa sem conceder XP antes da coleta", async () => {
+    await command({ action: "training.start", trainingId: "kame-basic" });
+    const first = (await readSnapshot(database.db, owner))!;
+    expect(first.activity?.training).toMatchObject({ trainingId: "kame-basic", xpPerHour: 20 });
+    expect(
+      Date.parse(first.activity!.finishesAt) - Date.parse(first.activity!.training!.startedAt),
+    ).toBe(86400000);
+    expect((await readSnapshot(database.db, owner))!.activity).toEqual(first.activity);
+    expect(first.character.xp).toBe(0);
+    await expect(
+      command({ action: "battle", areaId: "floresta", enemyId: "lobo" }),
+    ).rejects.toMatchObject({ code: "ACTIVITY_PENDING" });
+  });
+  it("coleta idle concorrente acumula no máximo 24h e entrega uma única vez", async () => {
+    await command({ action: "training.start" });
+    const initial = (await readSnapshot(database.db, owner))!;
+    await database.db
+      .update(s.activities)
+      .set({ startedAt: new Date(0), finishesAt: new Date(86400000) })
+      .where(eq(s.activities.id, initial.activity!.id));
+    const input = {
+      action: "activity.finish",
+      activityId: initial.activity!.id,
+      idempotencyKey: randomUUID(),
+    };
+    const results = await Promise.all(
+      [0, 1, 2, 3].map(() => executeAction(database.db, owner, input)),
+    );
+    expect(results.every((result) => result.message === results[0].message)).toBe(true);
+    const after = (await readSnapshot(database.db, owner))!;
+    expect(after.character).toMatchObject({ level: 4, xp: 30 });
+    expect(after.activity).toBeNull();
+    await expect(
+      command({ action: "activity.finish", activityId: input.activityId }),
+    ).rejects.toMatchObject({ code: "ACTIVITY_NOT_PENDING" });
+  });
+  it("coleta antecipada usa taxa congelada e não exige esperar 24h", async () => {
+    await command({ action: "training.start" });
+    const initial = (await readSnapshot(database.db, owner))!;
+    await database.db
+      .update(s.activities)
+      .set({ startedAt: new Date(Date.now() - 900000) })
+      .where(eq(s.activities.id, initial.activity!.id));
+    await database.db
+      .update(s.trainings)
+      .set({ baseXpPerHour: 1000 })
+      .where(eq(s.trainings.id, "kame-basic"));
+    try {
+      await command({ action: "activity.finish", activityId: initial.activity!.id });
+      const after = (await readSnapshot(database.db, owner))!;
+      expect(after.activity).toBeNull();
+      expect(after.character.xp).toBeGreaterThanOrEqual(5);
+      expect(after.character.xp).toBeLessThan(7);
+      expect(after.character.level).toBe(1);
+    } finally {
+      await database.db
+        .update(s.trainings)
+        .set({ baseXpPerHour: 20 })
+        .where(eq(s.trainings.id, "kame-basic"));
+    }
+  });
+  it("nível alto não ignora desbloqueios difíceis nem ID inválido", async () => {
+    await database.db
+      .update(s.characters)
+      .set({ level: 100 })
+      .where(eq(s.characters.userId, owner));
+    for (const trainingId of ["kame-weights", "karin", "popo"])
+      await expect(command({ action: "training.start", trainingId })).rejects.toMatchObject({
+        code: "REQUIREMENTS",
+      });
+    await expect(command({ action: "training.start", trainingId: "fake" })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
+    expect((await readSnapshot(database.db, owner))!.activity).toBeNull();
+  });
   it("encontro salva sorteios, esconde dados privados e resiste a recarga", async () => {
     await command({ action: "exploration.start", areaId: "floresta" });
     const first = (await readSnapshot(database.db, owner))!;
@@ -440,12 +515,12 @@ describe("Persistência PostgreSQL e transações", () => {
     });
     expect((await readSnapshot(database.db, owner))!.character.xp).toBe(0);
   });
-  it("conclusão concorrente e repetida concede XP uma vez", async () => {
+  it("treino legado de 30s continua coletável uma única vez", async () => {
     await command({ action: "training.start" });
     const snap = (await readSnapshot(database.db, owner))!;
     await database.db
       .update(s.activities)
-      .set({ finishesAt: new Date(0) })
+      .set({ finishesAt: new Date(0), trainingId: null, xpPerMinute: null, xpPerHour: null })
       .where(eq(s.activities.id, snap.activity!.id));
     const action = {
       action: "activity.finish",
@@ -688,7 +763,7 @@ describe("Builds, campanha e economia transacionais", () => {
             const activity = (await readSnapshot(database.db, owner))!.activity!;
             await database.db
               .update(s.activities)
-              .set({ finishesAt: new Date(0) })
+              .set({ startedAt: new Date(0), finishesAt: new Date(300000) })
               .where(eq(s.activities.id, activity.id));
             await command({ action: "activity.finish", activityId: activity.id });
           }
