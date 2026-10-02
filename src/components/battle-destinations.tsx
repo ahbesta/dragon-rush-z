@@ -89,6 +89,9 @@ export function BattleDestinations({
                 <button
                   className={`button small ${enemy.boss ? "primary" : "secondary"}`}
                   disabled={!canFight || locked.length > 0}
+                  aria-describedby={
+                    snapshot.activeExploration ? "expedition-lock-message" : undefined
+                  }
                   onClick={() =>
                     onAction(
                       enemy.boss

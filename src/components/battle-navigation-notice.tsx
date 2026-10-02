@@ -33,10 +33,21 @@ export function BattleNavigationNotice({
         <DragonBall stars={4} />
       </div>
       <span className="eyebrow">SEU GUERREIRO ESTÁ NA ARENA</span>
-      <h2 id="battle-navigation-title">O combate ainda não acabou!</h2>
+      <h2 id="battle-navigation-title">
+        {destination === "Explorar" ? "Exploração bloqueada" : "O combate ainda não acabou!"}
+      </h2>
       <p id="battle-navigation-description">
-        Termine esta batalha para acessar <strong>{destination}</strong>. Escolha seu próximo
-        movimento e supere seus limites!
+        {destination === "Explorar" ? (
+          <>
+            Você está em uma batalha em andamento. Termine o combate antes de iniciar ou retomar uma
+            expedição.
+          </>
+        ) : (
+          <>
+            Você está em uma batalha em andamento. Termine o combate para acessar{" "}
+            <strong>{destination}</strong>.
+          </>
+        )}
       </p>
       <button className="battle-notice-return" onClick={onClose}>
         <LockKeyhole size={16} /> Voltar ao combate

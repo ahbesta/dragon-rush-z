@@ -162,9 +162,14 @@ test("menu Dragon Ball dentro da arena, bolsa e defesa, velocidade persistente e
     for (const destination of ["Treinamento", "Inventário", "Explorar", "Sair da conta"]) {
       const previous = await state();
       await go(destination);
-      const notice = page.getByRole("dialog", { name: "O combate ainda não acabou!" });
+      const notice = page.getByRole("dialog", {
+        name: destination === "Explorar" ? "Exploração bloqueada" : "O combate ainda não acabou!",
+      });
       await expect(notice).toBeVisible();
-      await expect(notice).toContainText(destination);
+      await expect(notice).toContainText("Você está em uma batalha em andamento");
+      if (destination === "Explorar")
+        await expect(notice).toContainText("antes de iniciar ou retomar uma expedição");
+      else await expect(notice).toContainText(destination);
       expect(
         await notice.evaluate((element) => {
           const box = element.getBoundingClientRect();
@@ -226,6 +231,8 @@ test("menu Dragon Ball dentro da arena, bolsa e defesa, velocidade persistente e
   await menu.getByRole("button", { name: "Usar Poção de HP", exact: true }).click();
   await expect.poll(async () => (await state()).activeBattle?.itemUses).toBe(1);
   const afterItem = await state();
+  await arena.locator(".arena-battle-journal > summary").click();
+  await expect(arena.locator(".arena-battle-journal")).toHaveAttribute("open", "");
   await expect(arena.locator(".arena-battle-journal .combat-avatar")).not.toHaveCount(0);
   await arena
     .locator(".arena-battle-journal")

@@ -523,6 +523,30 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
               </button>
             </div>
           )}
+          {snapshot.activeExploration && section !== "explore" && !snapshot.activeBattle && (
+            <aside
+              className="activity-banner expedition-lock-banner"
+              aria-labelledby="expedition-lock-title"
+              role="status"
+            >
+              <span className="expedition-lock-emblem" aria-hidden="true">
+                <Compass size={28} />
+                <LockKeyhole size={13} />
+              </span>
+              <div>
+                <span className="eyebrow orange">EXPEDIÇÃO EM ANDAMENTO</span>
+                <strong id="expedition-lock-title">Novas batalhas bloqueadas</strong>
+                <p id="expedition-lock-message">
+                  {snapshot.activeExploration.status === "ambush"
+                    ? "Há uma emboscada esperando você. Resolva-a em Explorar e encerre a expedição para liberar novas batalhas."
+                    : "Sua expedição ainda não terminou. Encerre-a em Explorar para liberar novas batalhas e trocar de área."}
+                </p>
+              </div>
+              <button className="button primary" onClick={() => go("explore")}>
+                Voltar à exploração <ArrowRight size={17} />
+              </button>
+            </aside>
+          )}
           {section === "explore" && (
             <ExplorationPanel
               snapshot={snapshot}
@@ -599,18 +623,6 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
                   });
                 }}
               />
-            </div>
-          )}
-          {snapshot.activeExploration && section !== "explore" && !snapshot.activeBattle && (
-            <div className="activity-banner">
-              <Compass size={22} />
-              <div>
-                <strong>Um encontro espera sua decisão</strong>
-                <p>{snapshot.activeExploration.title} · Seus achados ainda estão em risco.</p>
-              </div>
-              <button className="button secondary small" onClick={() => go("explore")}>
-                Voltar à exploração
-              </button>
             </div>
           )}
           {activity && (

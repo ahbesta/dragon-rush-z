@@ -88,7 +88,7 @@ for (const width of [390, 1440])
       await page.getByRole("button", { name: "Procurar um encontro", exact: true }).click();
       await expect(page.locator(".exploration-occurrence")).toBeVisible();
       expect((await state()).catalog.explorationEvents).toBeUndefined();
-      await fixture("floresta-gather");
+      const gather = await fixture("floresta-gather");
       await page.getByRole("button", { name: /Recolher erva medicinal/ }).click();
       await expect(page.getByLabel("Achados pendentes")).toContainText("Erva medicinal");
       await expect(page.locator(".arena-loot-saved")).toContainText("Achado pendente");
@@ -101,8 +101,28 @@ for (const width of [390, 1440])
       await page
         .locator(".exploration-occurrence")
         .screenshot({ path: `.local/screenshots/exploration-gather-${width}.png` });
+      await go(page, "Batalhar");
+      const lockNotice = page.getByRole("status").filter({ hasText: "Novas batalhas bloqueadas" });
+      await expect(lockNotice).toContainText("Sua expedição ainda não terminou");
+      await expect(lockNotice).toContainText("Encerre-a em Explorar");
+      await expect(page.getByRole("button", { name: "Trocar área", exact: true })).toBeDisabled();
+      for (const button of await page.locator(".enemy-row button").all())
+        await expect(button).toBeDisabled();
+      expect(
+        await lockNotice.evaluate(
+          (notice) =>
+            notice.getBoundingClientRect().bottom <=
+            document.querySelector(".battle-destinations")!.getBoundingClientRect().top,
+        ),
+      ).toBe(true);
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+        .toBe(true);
+      await lockNotice.screenshot({ path: `.local/screenshots/expedition-lock-${width}.png` });
+      await page.getByRole("button", { name: "Voltar à exploração", exact: true }).click();
+      expect((await state()).activeExploration.id).toBe(gather.id);
       await go(page, "Inventário");
-      await expect(page.getByText("Um encontro espera sua decisão")).toBeVisible();
+      await expect(page.getByText("Novas batalhas bloqueadas", { exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Voltar à exploração" }).click();
       await page.getByRole("button", { name: /Voltar em segurança/ }).click();
       await expect(page.getByLabel("Resultado da exploração")).toContainText("Erva medicinal");

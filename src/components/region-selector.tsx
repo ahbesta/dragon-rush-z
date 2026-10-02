@@ -53,6 +53,9 @@ export function RegionSelector({
         <button
           className="button secondary"
           disabled={Boolean(snapshot.activeBattle || snapshot.activeExploration)}
+          aria-describedby={
+            snapshot.activeExploration && !exploration ? "expedition-lock-message" : undefined
+          }
           onClick={() => dialog.current?.showModal()}
         >
           <Map size={17} /> Trocar área
