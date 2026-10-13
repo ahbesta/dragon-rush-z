@@ -1,0 +1,78 @@
+{
+  "htmlCssUnchanged": true,
+  "sceneryComparisons": [
+    {
+      "time": 0,
+      "changedCharacterPixels": 1159,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 0.125,
+      "changedCharacterPixels": 1155,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 6.1,
+      "changedCharacterPixels": 1168,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 12.3,
+      "changedCharacterPixels": 1033,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 18.7,
+      "changedCharacterPixels": 932,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 24.1,
+      "changedCharacterPixels": 1072,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 30.2,
+      "changedCharacterPixels": 1142,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 36.8,
+      "changedCharacterPixels": 1009,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 42.4,
+      "changedCharacterPixels": 1145,
+      "changedSceneryPixels": 0
+    },
+    {
+      "time": 47.999,
+      "changedCharacterPixels": 1140,
+      "changedSceneryPixels": 0
+    }
+  ],
+  "alpha": [
+    {
+      "name": "goku",
+      "width": 128,
+      "height": 132,
+      "alphaValues": [
+        0,
+        255
+      ],
+      "transparentFraction": 0.6727627840909091
+    },
+    {
+      "name": "chichi",
+      "width": 68,
+      "height": 88,
+      "alphaValues": [
+        0,
+        255
+      ],
+      "transparentFraction": 0.7291109625668449
+    }
+  ],
+  "errors": []
+}

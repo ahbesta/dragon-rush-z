@@ -1,0 +1,256 @@
+{
+  "viewports": [
+    {
+      "width": 320,
+      "height": 480,
+      "scrollWidth": 320,
+      "scrollHeight": 480,
+      "scene": {
+        "x": 16,
+        "y": 152.75,
+        "width": 288,
+        "height": 192,
+        "top": 152.75,
+        "right": 304,
+        "bottom": 344.75,
+        "left": 16
+      },
+      "controls": {
+        "x": 127.640625,
+        "y": 352.75,
+        "width": 176.359375,
+        "height": 40,
+        "top": 352.75,
+        "right": 304,
+        "bottom": 392.75,
+        "left": 127.640625
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    },
+    {
+      "width": 320,
+      "height": 568,
+      "scrollWidth": 320,
+      "scrollHeight": 568,
+      "scene": {
+        "x": 16,
+        "y": 196.75,
+        "width": 288,
+        "height": 192,
+        "top": 196.75,
+        "right": 304,
+        "bottom": 388.75,
+        "left": 16
+      },
+      "controls": {
+        "x": 127.640625,
+        "y": 396.75,
+        "width": 176.359375,
+        "height": 40,
+        "top": 396.75,
+        "right": 304,
+        "bottom": 436.75,
+        "left": 127.640625
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    },
+    {
+      "width": 360,
+      "height": 640,
+      "scrollWidth": 360,
+      "scrollHeight": 640,
+      "scene": {
+        "x": 16,
+        "y": 229.3125,
+        "width": 328,
+        "height": 218.65625,
+        "top": 229.3125,
+        "right": 344,
+        "bottom": 447.96875,
+        "left": 16
+      },
+      "controls": {
+        "x": 167.640625,
+        "y": 460.96875,
+        "width": 176.359375,
+        "height": 40,
+        "top": 460.96875,
+        "right": 344,
+        "bottom": 500.96875,
+        "left": 167.640625
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "scene": {
+        "x": 16,
+        "y": 321.3125,
+        "width": 358,
+        "height": 238.65625,
+        "top": 321.3125,
+        "right": 374,
+        "bottom": 559.96875,
+        "left": 16
+      },
+      "controls": {
+        "x": 197.640625,
+        "y": 572.96875,
+        "width": 176.359375,
+        "height": 40,
+        "top": 572.96875,
+        "right": 374,
+        "bottom": 612.96875,
+        "left": 197.640625
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    },
+    {
+      "width": 430,
+      "height": 932,
+      "scrollWidth": 430,
+      "scrollHeight": 932,
+      "scene": {
+        "x": 16,
+        "y": 351.96875,
+        "width": 398,
+        "height": 265.328125,
+        "top": 351.96875,
+        "right": 414,
+        "bottom": 617.296875,
+        "left": 16
+      },
+      "controls": {
+        "x": 237.640625,
+        "y": 630.296875,
+        "width": 176.359375,
+        "height": 40,
+        "top": 630.296875,
+        "right": 414,
+        "bottom": 670.296875,
+        "left": 237.640625
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "scrollWidth": 844,
+      "scrollHeight": 390,
+      "scene": {
+        "x": 16,
+        "y": 12,
+        "width": 812,
+        "height": 330,
+        "top": 12,
+        "right": 828,
+        "bottom": 342,
+        "left": 16
+      },
+      "controls": {
+        "x": 328.640625,
+        "y": 348,
+        "width": 186.703125,
+        "height": 30,
+        "top": 348,
+        "right": 515.34375,
+        "bottom": 378,
+        "left": 328.640625
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "scene": {
+        "x": 120,
+        "y": 163.09375,
+        "width": 1200,
+        "height": 638.90625,
+        "top": 163.09375,
+        "right": 1320,
+        "bottom": 802,
+        "left": 120
+      },
+      "controls": {
+        "x": 1133.296875,
+        "y": 818,
+        "width": 186.703125,
+        "height": 38,
+        "top": 818,
+        "right": 1320,
+        "bottom": 856,
+        "left": 1133.296875
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    },
+    {
+      "width": 1440,
+      "height": 1000,
+      "scrollWidth": 1440,
+      "scrollHeight": 1000,
+      "scene": {
+        "x": 120,
+        "y": 163.09375,
+        "width": 1200,
+        "height": 738.90625,
+        "top": 163.09375,
+        "right": 1320,
+        "bottom": 902,
+        "left": 120
+      },
+      "controls": {
+        "x": 1133.296875,
+        "y": 918,
+        "width": 186.703125,
+        "height": 38,
+        "top": 918,
+        "right": 1320,
+        "bottom": 956,
+        "left": 1133.296875
+      },
+      "smoothing": false,
+      "rendering": "crisp-edges"
+    }
+  ],
+  "errors": [],
+  "requests": [
+    "file:///C:/Users/Rafa/Desktop/Trabalhos/Rafael/dragon-rush-z/.local/sunset-preview/index.html",
+    "file:///C:/Users/Rafa/Desktop/Trabalhos/Rafael/dragon-rush-z/.local/sunset-preview/index.html"
+  ],
+  "loop": {
+    "0": "d6ac524f532c745daef2c76cdca2e05eda3a02375f37cceea68f8c55bbe05c81",
+    "48": "d6ac524f532c745daef2c76cdca2e05eda3a02375f37cceea68f8c55bbe05c81",
+    "96": "d6ac524f532c745daef2c76cdca2e05eda3a02375f37cceea68f8c55bbe05c81",
+    "identicalCycles": true,
+    "seamChangedPixels": 856,
+    "seamChangeFraction": 0.022291666666666668
+  },
+  "controls": {
+    "pause": true,
+    "reset": true,
+    "resume": true
+  },
+  "longRun": {
+    "seconds": 100.0127000000093,
+    "frames": 6002,
+    "medianFrameMs": 16.69999999999709,
+    "p95FrameMs": 16.70000000001164,
+    "maxFrameMs": 16.80000000000291,
+    "cacheStable": true
+  },
+  "offline": true,
+  "reducedMotion": true
+}

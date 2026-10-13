@@ -1,0 +1,13 @@
+{
+  "tool": "image_gen.imagegen (built-in)",
+  "originalEngineHash": "0d5d100520fccab28d673884aace0bb596468b2c50962c8cbdbfcdbdf8d046c6",
+  "updatedEngineHash": "438ad98234cd30c3b3b785e1592bf06d6e4137e07989006a3537f435a7e917e3",
+  "approvedHtmlCssHash": "e58d6e35d948d83609c0cf8d0b8b69890901f68769de1dbf23307f7c79c52cff",
+  "updatedHtmlCssHash": "e58d6e35d948d83609c0cf8d0b8b69890901f68769de1dbf23307f7c79c52cff",
+  "htmlCssUnchanged": true,
+  "atlases": {
+    "goku": "goku-atlas.png",
+    "chichi": "chichi-atlas.png"
+  },
+  "runtime": "Embedded data URLs; no external image requests"
+}

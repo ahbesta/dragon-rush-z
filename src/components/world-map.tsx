@@ -186,7 +186,7 @@ export function WorldMap({
           </h1>
         </div>
         <span className="world-map-planet">
-          <Map size={17} /> SEU MUNDO. SUA JORNADA.
+          <Map size={17} /> SEU MUNDO
         </span>
       </div>
       <div className="world-map-frame">

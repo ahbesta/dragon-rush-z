@@ -373,7 +373,6 @@ export function GameShell({ initial }: { initial: GameSnapshot }) {
           <span>
             <DragonBall stars={1} /> TREINE. EVOLUA. SUPERE SEUS LIMITES.
           </span>
-          <span>PRIMEIRA JORNADA · PROJETO DE FÃ</span>
         </div>
         <header className="game-header">
           <button

@@ -3,7 +3,8 @@ node_modules/
 out/
 .env*
 !.env.example
-.local/
+.local/*
+!.local/sunset-preview/
 .vercel/
 coverage/
 playwright-report/

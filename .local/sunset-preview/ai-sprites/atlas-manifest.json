@@ -1,0 +1,174 @@
+[
+  {
+    "name": "goku",
+    "generatedWidth": 1448,
+    "generatedHeight": 1086,
+    "cols": 4,
+    "rows": 3,
+    "atlasW": 128,
+    "atlasH": 132,
+    "tileWidth": 32,
+    "tileHeight": 44,
+    "characterHeight": 35,
+    "frames": [
+      {
+        "row": 0,
+        "col": 0,
+        "x": 2,
+        "y": 7,
+        "w": 25,
+        "h": 35,
+        "opaquePixels": 487
+      },
+      {
+        "row": 0,
+        "col": 1,
+        "x": 3,
+        "y": 8,
+        "w": 25,
+        "h": 34,
+        "opaquePixels": 464
+      },
+      {
+        "row": 0,
+        "col": 2,
+        "x": 2,
+        "y": 7,
+        "w": 25,
+        "h": 35,
+        "opaquePixels": 479
+      },
+      {
+        "row": 0,
+        "col": 3,
+        "x": 3,
+        "y": 8,
+        "w": 25,
+        "h": 34,
+        "opaquePixels": 442
+      },
+      {
+        "row": 1,
+        "col": 0,
+        "x": 5,
+        "y": 8,
+        "w": 24,
+        "h": 34,
+        "opaquePixels": 443
+      },
+      {
+        "row": 1,
+        "col": 1,
+        "x": 5,
+        "y": 8,
+        "w": 24,
+        "h": 34,
+        "opaquePixels": 369
+      },
+      {
+        "row": 1,
+        "col": 2,
+        "x": 6,
+        "y": 8,
+        "w": 24,
+        "h": 34,
+        "opaquePixels": 416
+      },
+      {
+        "row": 1,
+        "col": 3,
+        "x": 6,
+        "y": 8,
+        "w": 23,
+        "h": 34,
+        "opaquePixels": 415
+      },
+      {
+        "row": 2,
+        "col": 0,
+        "x": 3,
+        "y": 6,
+        "w": 26,
+        "h": 36,
+        "opaquePixels": 510
+      },
+      {
+        "row": 2,
+        "col": 1,
+        "x": 4,
+        "y": 7,
+        "w": 25,
+        "h": 35,
+        "opaquePixels": 476
+      },
+      {
+        "row": 2,
+        "col": 2,
+        "x": 3,
+        "y": 6,
+        "w": 26,
+        "h": 36,
+        "opaquePixels": 520
+      },
+      {
+        "row": 2,
+        "col": 3,
+        "x": 3,
+        "y": 6,
+        "w": 26,
+        "h": 36,
+        "opaquePixels": 508
+      }
+    ]
+  },
+  {
+    "name": "chichi",
+    "generatedWidth": 1254,
+    "generatedHeight": 1254,
+    "cols": 2,
+    "rows": 2,
+    "atlasW": 68,
+    "atlasH": 88,
+    "tileWidth": 34,
+    "tileHeight": 44,
+    "characterHeight": 35,
+    "frames": [
+      {
+        "row": 0,
+        "col": 0,
+        "x": 6,
+        "y": 7,
+        "w": 20,
+        "h": 35,
+        "opaquePixels": 413
+      },
+      {
+        "row": 0,
+        "col": 1,
+        "x": 6,
+        "y": 7,
+        "w": 17,
+        "h": 35,
+        "opaquePixels": 403
+      },
+      {
+        "row": 1,
+        "col": 0,
+        "x": 6,
+        "y": 7,
+        "w": 15,
+        "h": 35,
+        "opaquePixels": 397
+      },
+      {
+        "row": 1,
+        "col": 1,
+        "x": 6,
+        "y": 7,
+        "w": 20,
+        "h": 35,
+        "opaquePixels": 408
+      }
+    ]
+  }
+]
